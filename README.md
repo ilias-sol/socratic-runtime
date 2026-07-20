@@ -57,6 +57,28 @@ There is no fixed “third failure” trigger. Progress, experimentation, uncert
 
 If the learner remains stuck, **I need another nudge** can request up to two progressively narrower follow-ups. Meaningful progress opens a new struggle episode. Editing cancels stale work, unchanged code is not rechecked, and elapsed time alone never counts as struggle.
 
+## How an exercise declares the task
+
+The exercise places a human-readable `@socratic-task` block immediately above the function, method, or class the learner should implement:
+
+```python
+"""
+@socratic-task
+Implement binary search over a sorted list.
+"""
+def binary_search(values, target):
+    pass
+```
+
+This marker gives Socratic Runtime the assignment text and associates it with the following symbol. Python triple-quoted strings, contiguous `#`, `//`, or `--` comments, and `/* ... */` blocks are supported. If a file contains multiple tasks, cursor proximity selects the active one; **Socratic Runtime: Use Selection as Task** is an explicit fallback.
+
+The task block and verifier configuration have deliberately separate responsibilities:
+
+- `@socratic-task` describes what the learner is trying to implement.
+- `.socratic/exercise.json` names the editable target and defines the approved verifier and optional post-completion reference.
+
+Task text is treated as untrusted content. It can never configure or execute a command. A prepared `.socratic/exercise.json` remains required for verified tutoring, executable completion, and the optional reference comparison.
+
 ## Install the extension
 
 Installing a release does **not** require Node.js, `npm install`, or `npm run setup`.
