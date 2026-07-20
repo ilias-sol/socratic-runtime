@@ -1,0 +1,214 @@
+{
+  "name": "socratic-runtime",
+  "displayName": "Socratic Runtime",
+  "description": "A GPT-5.6 Socratic IDE tutor that evaluates learner progress before intervening.",
+  "version": "0.1.0",
+  "publisher": "socratic-runtime",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ilias-sol/socratic-runtime.git"
+  },
+  "homepage": "https://github.com/ilias-sol/socratic-runtime#readme",
+  "bugs": {
+    "url": "https://github.com/ilias-sol/socratic-runtime/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "education",
+    "socratic",
+    "codex",
+    "gpt-5.6",
+    "tutor",
+    "abstention"
+  ],
+  "activationEvents": [
+    "onCommand:socraticRuntime.startSession",
+    "workspaceContains:.socratic/exercise.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "socraticRuntime.startSession",
+        "title": "Socratic Runtime: Start Session"
+      },
+      {
+        "command": "socraticRuntime.runCheck",
+        "title": "Socratic Runtime: Run Check",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "socraticRuntime.useSelectionAsTask",
+        "title": "Socratic Runtime: Use Selection as Task"
+      },
+      {
+        "command": "socraticRuntime.openDecisionTrace",
+        "title": "Socratic Runtime: Open Decision Trace",
+        "icon": "$(output)"
+      },
+      {
+        "command": "socraticRuntime.openPolicyComparison",
+        "title": "Socratic Runtime: Open Policy Comparison"
+      },
+      {
+        "command": "socraticRuntime.resetDemo",
+        "title": "Socratic Runtime: Reset Demo"
+      },
+      {
+        "command": "socraticRuntime.endSession",
+        "title": "Socratic Runtime: End Session",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "socraticRuntime.pauseWatching",
+        "title": "Socratic Runtime: Pause Watching",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "socraticRuntime.resumeWatching",
+        "title": "Socratic Runtime: Resume Watching",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "socraticRuntime.openHelp",
+        "title": "Socratic Runtime: Open Help View"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "socraticRuntime",
+          "title": "Socratic Runtime",
+          "icon": "media/socratic.svg"
+        }
+      ]
+    },
+    "views": {
+      "socraticRuntime": [
+        {
+          "type": "webview",
+          "id": "socraticRuntime.help",
+          "name": "Learning Support"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "socraticRuntime.runCheck",
+          "when": "view == socraticRuntime.help",
+          "group": "navigation@1"
+        },
+        {
+          "command": "socraticRuntime.pauseWatching",
+          "when": "view == socraticRuntime.help && socraticRuntime.watching",
+          "group": "navigation@2"
+        },
+        {
+          "command": "socraticRuntime.resumeWatching",
+          "when": "view == socraticRuntime.help && socraticRuntime.paused",
+          "group": "navigation@2"
+        },
+        {
+          "command": "socraticRuntime.openDecisionTrace",
+          "when": "view == socraticRuntime.help && socraticRuntime.active",
+          "group": "session@1"
+        },
+        {
+          "command": "socraticRuntime.endSession",
+          "when": "view == socraticRuntime.help && socraticRuntime.active",
+          "group": "session@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Socratic Runtime",
+      "properties": {
+        "socraticRuntime.analysisMode": {
+          "type": "string",
+          "enum": [
+            "luna",
+            "sol"
+          ],
+          "default": "luna",
+          "description": "Luna performs responsive GPT-5.6 learner-state assessment. Sol provides optional deeper analysis. Both use the signed-in Codex CLI."
+        },
+        "socraticRuntime.codexPath": {
+          "type": "string",
+          "default": "codex",
+          "description": "Codex CLI executable used for live analysis."
+        },
+        "socraticRuntime.autoCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Quietly verify each new target-file revision while a verified session is active."
+        },
+        "socraticRuntime.autoCheckIntervalMs": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 2000,
+          "maximum": 60000,
+          "description": "Upper bound on the idle wait for a pending revision. Continuous typing resets the timer, and unchanged code is never rechecked."
+        },
+        "socraticRuntime.autoCheckDebounceMs": {
+          "type": "number",
+          "default": 4000,
+          "minimum": 1000,
+          "maximum": 10000,
+          "description": "Wait for this much typing idle time before checking the newest revision."
+        },
+        "socraticRuntime.autoPauseAfterMs": {
+          "type": "number",
+          "default": 600000,
+          "minimum": 0,
+          "maximum": 7200000,
+          "description": "Pause automatic watching after this much target-file inactivity. The timeout itself never runs a check or contacts AI. Set to 0 to disable."
+        },
+        "socraticRuntime.retainSessions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Retain redacted session traces in VS Code extension storage."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "format": "prettier --check src test scripts docs evals README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace/binary-search/.socratic/exercise.json sample-workspace/binary-search/.vscode/settings.json",
+    "format:write": "prettier --write src test scripts docs evals README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace/binary-search/.socratic/exercise.json sample-workspace/binary-search/.vscode/settings.json",
+    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "test": "vitest run --dir test",
+    "test:extension": "node scripts/test-extension.mjs",
+    "test:python": "node scripts/test-python.mjs",
+    "test:evals": "node scripts/run-evals.mjs",
+    "test:live": "node scripts/live-simulate.mjs",
+    "audit:submission": "node scripts/audit-submission.mjs",
+    "package": "node scripts/package.mjs",
+    "demo:reset": "node scripts/reset-demo.mjs",
+    "setup": "node scripts/setup.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@types/node": "22.10.5",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "2.4.1",
+    "@vscode/vsce": "3.2.2",
+    "esbuild": "0.25.12",
+    "eslint": "9.39.2",
+    "prettier": "3.4.2",
+    "typescript": "5.7.3",
+    "typescript-eslint": "8.19.1",
+    "vite": "6.4.3",
+    "vitest": "3.2.6"
+  }
+}
