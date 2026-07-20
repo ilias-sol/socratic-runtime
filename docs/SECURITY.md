@@ -7,12 +7,13 @@
 - Changing the verifier configuration invalidates its approval.
 - Commands run as bounded argument arrays with `shell: false`.
 - Relative path traversal, unknown fields, inline interpreter evaluation, and `npx` auto-downloads are rejected.
+- Workspace-local verifier wrappers are checked lexically and after real-path resolution, including symlink escape protection.
 - The verifier receives a disposable unsaved snapshot and a time limit. Cancellation terminates the owned process tree on Windows.
 - Environment variables whose names indicate tokens, secrets, passwords, API keys, or authentication are removed before verifier launch.
 
 ## Untrusted inputs
 
-Task text, learner code, diagnostics, verifier output, retained state, and model output are treated as untrusted data. Task comments never configure execution. Model instructions label the packet as data and run in a read-only sandbox.
+Task text, learner code, diagnostics, verifier output, retained state, and model output are treated as untrusted data. Task comments never configure execution. Model instructions label the packet as data and run in a read-only sandbox rooted at a disposable packet-only directory rather than the learner workspace.
 
 ## Model-output boundary
 

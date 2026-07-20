@@ -1,4 +1,5 @@
 import { gateModelDecision, reduceVerification } from "./policy.js";
+import { applyAssessmentTransition } from "./assessmentTransition.js";
 import { validateModelDecision } from "./providers.js";
 import type {
   ModelDecision,
@@ -189,26 +190,17 @@ export async function evaluateTrace(
     }
     modelCalls += 1;
     const decision = await decisionFor(trace, state, result, revision.code);
-    state.modelAssessmentCount += 1;
     const gated = gateModelDecision(state, decision, reduced);
-    if (decision.progressAssessment === "meaningful") {
-      state.struggleEpisode += 1;
-      state.episodeHasIntervention = false;
-      state.episodeSupportCount = 0;
-    }
-    state.latestVerification = result;
-    state.lastCode = revision.code;
+    const transition = applyAssessmentTransition(
+      state,
+      result,
+      revision.code,
+      decision,
+      reduced,
+      gated,
+    );
     gateReasons.push(gated.reason);
-    if (gated.permitted && gated.action !== "remain_silent") {
-      state.interventionsShown += 1;
-      state.lastInterventionCheck = state.checkCount;
-      state.episodeHasIntervention = true;
-      state.episodeSupportCount += 1;
-      finalAction = "intervene";
-    } else {
-      state.silentDecisions += 1;
-      finalAction = "remain_silent";
-    }
+    finalAction = transition.finalAction;
   }
 
   return {

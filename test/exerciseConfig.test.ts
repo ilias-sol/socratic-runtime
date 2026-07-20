@@ -68,6 +68,22 @@ describe("trusted exercise config", () => {
     ["absolute target", { targetFile: "C:\\outside\\solution.py" }],
     ["demo traversal", { demo: { starterFile: "../../starter.py" } }],
     [
+      "workspace verifier traversal",
+      {
+        verification: {
+          command: ["${workspaceFolder}/../outside.exe", "test"],
+        },
+      },
+    ],
+    [
+      "nested workspace verifier traversal",
+      {
+        verification: {
+          command: ["${workspaceFolder}/tools/../../outside.exe", "test"],
+        },
+      },
+    ],
+    [
       "reference traversal",
       {
         completion: {

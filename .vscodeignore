@@ -4,7 +4,6 @@
 .pnpm-store/**
 .tmp-*/**
 .github/**
-.agents/**
 .codex/**
 .internal/**
 skill-staging/**
@@ -14,6 +13,7 @@ scripts/**
 sample-workspace/**
 evals/**
 docs/**
+judge/**
 artifacts/**
 node_modules/**
 AGENTS.md

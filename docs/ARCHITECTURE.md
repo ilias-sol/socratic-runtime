@@ -35,7 +35,9 @@ objective pass/fail evidence
 
 `src/packet.ts` relocates and extracts the current target body, caps its size, and builds a compact revision diff. `src/privacy.ts` abstracts verification and removes paths, test identifiers, quoted values, and numeric literals from diagnostic excerpts.
 
-`src/providers.ts` invokes `codex exec` in an ephemeral read-only sandbox with a strict output schema. A new edit aborts the child process. Invalid, unavailable, timed-out, or unauthenticated providers fail to silence.
+`src/providers.ts` stages the packaged Socratic skill in a disposable packet-only workspace, invokes `codex exec` there in an ephemeral read-only sandbox with a strict output schema and allowlisted environment, and removes the workspace afterward. The learner workspace is not exposed as the Codex working directory. A new edit aborts the child process. Invalid, unavailable, timed-out, or unauthenticated providers fail to silence.
+
+`src/assessmentTransition.ts` is the shared production state transition used by both the extension and deterministic evaluation replay. It owns trajectory counters, struggle episodes, final silence/intervention accounting, and phase changes so evaluation fixtures cannot drift from runtime behavior.
 
 `src/policy.ts` collects objective evidence and enforces the local safety gate. It does not reclassify pedagogical progress.
 

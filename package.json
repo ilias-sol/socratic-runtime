@@ -193,6 +193,7 @@
     "test:live": "node scripts/live-simulate.mjs",
     "audit:submission": "node scripts/audit-submission.mjs",
     "package": "node scripts/package.mjs",
+    "judge:bundle": "node scripts/judge-bundle.mjs",
     "demo:reset": "node scripts/reset-demo.mjs",
     "setup": "node scripts/setup.mjs",
     "verify": "node scripts/verify.mjs"

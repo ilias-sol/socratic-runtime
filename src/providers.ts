@@ -46,6 +46,42 @@ const allowedModelDecisionKeys = new Set([
 
 export const LIVE_MODEL_REASONING_EFFORT = "medium";
 
+/** Keep secrets out of any command the model may inspect while preserving CLI auth discovery. */
+export function codexEnvironment(
+  environment: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const safe: NodeJS.ProcessEnv = {};
+  const allowed = new Set([
+    "ALLUSERSPROFILE",
+    "APPDATA",
+    "CODEX_HOME",
+    "COMSPEC",
+    "HOME",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "LOCALAPPDATA",
+    "LOGONSERVER",
+    "PATH",
+    "PATHEXT",
+    "PROGRAMDATA",
+    "PROGRAMFILES",
+    "PROGRAMFILES(X86)",
+    "SYSTEMDRIVE",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "USERDOMAIN",
+    "USERNAME",
+    "USERPROFILE",
+    "WINDIR",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+  ]);
+  for (const [key, value] of Object.entries(environment))
+    if (allowed.has(key.toUpperCase())) safe[key] = value;
+  return safe;
+}
+
 export function validateModelDecision(value: unknown): ModelDecision {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("model output must be an object");
@@ -161,6 +197,12 @@ export class CodexCliProvider implements PedagogicalModelProvider {
     private readonly workspacePath: string,
     private readonly codexPath: string,
     private readonly codexArgsPrefix: string[] = [],
+    private readonly skillSourcePath = path.join(
+      workspacePath,
+      ".agents",
+      "skills",
+      "socratic-runtime",
+    ),
   ) {}
 
   async analyze(
@@ -173,6 +215,12 @@ export class CodexCliProvider implements PedagogicalModelProvider {
     );
     const schemaPath = path.join(tempRoot, "decision-schema.json");
     const outputPath = path.join(tempRoot, "decision.json");
+    const skillPath = path.join(
+      tempRoot,
+      ".agents",
+      "skills",
+      "socratic-runtime",
+    );
     await fs.writeFile(schemaPath, JSON.stringify(outputSchema), {
       mode: 0o600,
     });
@@ -204,6 +252,7 @@ export class CodexCliProvider implements PedagogicalModelProvider {
     ];
 
     try {
+      await fs.cp(this.skillSourcePath, skillPath, { recursive: true });
       const run = await new Promise<{ code: number | null; error: string }>(
         (resolve) => {
           let error = "";
@@ -213,10 +262,12 @@ export class CodexCliProvider implements PedagogicalModelProvider {
             this.codexPath,
             [...this.codexArgsPrefix, ...args],
             {
-              cwd: this.workspacePath,
+              // Codex sees only the staged policy and the explicit packet. The
+              // learner workspace is deliberately outside its readable root.
+              cwd: tempRoot,
               shell: false,
               windowsHide: true,
-              env: process.env,
+              env: codexEnvironment(process.env),
             },
           );
           const appendOutput = (chunk: Buffer): void => {

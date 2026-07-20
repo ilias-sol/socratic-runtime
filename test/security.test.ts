@@ -6,6 +6,7 @@ import {
   verifierApprovalKey,
 } from "../src/security.js";
 import type { ExerciseConfig, VerificationResult } from "../src/types.js";
+import { pathStaysInside } from "../src/verification.js";
 
 const config: ExerciseConfig = {
   version: 1,
@@ -59,5 +60,14 @@ describe("runtime security helpers", () => {
       DB_PASSWORD: "secret",
     });
     expect(safe).toEqual({ PATH: "tools", SYSTEMROOT: "windows" });
+  });
+
+  it("recognizes only executable paths beneath the workspace root", () => {
+    expect(
+      pathStaysInside("C:\\workspace", "C:\\workspace\\tools\\check.exe"),
+    ).toBe(true);
+    expect(pathStaysInside("C:\\workspace", "C:\\outside\\check.exe")).toBe(
+      false,
+    );
   });
 });

@@ -2,6 +2,8 @@
 
 ## Fast path
 
+The recommended release artifact is `socratic-runtime-judge-bundle.zip`. Extract it and run `setup-demo.ps1`; the bundle contains the VSIX, demo workspace, and this complete test path.
+
 1. Install VS Code 1.95 or newer, Python 3.10 or newer, and the Codex CLI.
 2. Download and install the release `.vsix` with **Extensions: Install from VSIX**; no Node.js build is required.
 3. Download or clone the repository so the bundled exercise workspace is available.
@@ -25,4 +27,4 @@ The trace records objective verification, GPT-5.6 learner state and progress, mo
 
 Pedagogical decisions are live model outputs, so exact wording is not guaranteed. Executable checks—not GPT confidence—establish completion. If Codex is unavailable, the extension reports **Sign-in Required** and does not substitute a recorded response.
 
-Repository verification includes 20 replay cases, 102 TypeScript tests, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 10 registered commands.
+Repository verification includes 20 replay cases, 107 TypeScript tests including a production-state learner journey, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 10 registered commands.

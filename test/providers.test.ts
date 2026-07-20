@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   CodexCliProvider,
+  codexEnvironment,
   LIVE_MODEL_REASONING_EFFORT,
   validateModelDecision,
 } from "../src/providers.js";
@@ -67,6 +68,18 @@ describe("live Codex provider", () => {
     expect(LIVE_MODEL_REASONING_EFFORT).toBe("medium");
   });
 
+  it("passes only environment variables needed for CLI discovery", () => {
+    expect(
+      codexEnvironment({
+        PATH: "tools",
+        USERPROFILE: "profile",
+        OPENAI_API_KEY: "secret",
+        GITHUB_PAT: "secret",
+        DATABASE_URL: "secret",
+      }),
+    ).toEqual({ PATH: "tools", USERPROFILE: "profile" });
+  });
+
   it("requires explicit learner-state and progress classification", () => {
     expect(validateModelDecision(validDecision)).toMatchObject({
       learnerState: "stalled",
@@ -93,10 +106,18 @@ describe("live Codex provider", () => {
       path.join(tmpdir(), "socratic-provider-test-"),
     );
     const fixture = path.resolve("test", "fixtures", "fake-codex.mjs");
+    const skill = path.resolve(".agents", "skills", "socratic-runtime");
     try {
-      const result = await new CodexCliProvider(workspace, process.execPath, [
-        fixture,
-      ]).analyze(packet, { mode: "luna", timeoutMs: 2_000 });
+      await writeFile(
+        path.join(workspace, "private-workspace-file.txt"),
+        "must not be visible",
+      );
+      const result = await new CodexCliProvider(
+        workspace,
+        process.execPath,
+        [fixture],
+        skill,
+      ).analyze(packet, { mode: "luna", timeoutMs: 2_000 });
       expect(result).toMatchObject({
         provider: "codex-cli",
         model: "gpt-5.6-luna",
@@ -112,12 +133,16 @@ describe("live Codex provider", () => {
       path.join(tmpdir(), "socratic-cancel-test-"),
     );
     const fixture = path.resolve("test", "fixtures", "slow-codex.mjs");
+    const skill = path.resolve(".agents", "skills", "socratic-runtime");
     const controller = new AbortController();
     const started = Date.now();
     try {
-      const pending = new CodexCliProvider(workspace, process.execPath, [
-        fixture,
-      ]).analyze(packet, {
+      const pending = new CodexCliProvider(
+        workspace,
+        process.execPath,
+        [fixture],
+        skill,
+      ).analyze(packet, {
         mode: "luna",
         timeoutMs: 10_000,
         signal: controller.signal,

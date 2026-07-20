@@ -56,6 +56,7 @@ const commands = [
   [process.execPath, ["scripts/audit-submission.mjs"]],
   [process.execPath, ["scripts/test-extension.mjs"]],
   [process.execPath, ["scripts/package.mjs"]],
+  [process.execPath, ["scripts/judge-bundle.mjs"]],
 ];
 const results = [];
 const portableArgument = (argument) => {
