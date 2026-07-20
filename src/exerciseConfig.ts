@@ -118,9 +118,14 @@ export function validateExerciseConfig(value: unknown): ExerciseConfig {
     throw new Error("verification.command must be a bounded argument array");
   }
   const executable = verification.command[0]!;
-  const workspaceExecutable = executable
-    .replaceAll("\\", "/")
-    .startsWith("${workspaceFolder}/");
+  const normalizedExecutable = executable.replaceAll("\\", "/");
+  const workspacePrefix = "${workspaceFolder}/";
+  const workspaceExecutable = normalizedExecutable.startsWith(workspacePrefix);
+  if (workspaceExecutable)
+    validateRelativeWorkspacePath(
+      normalizedExecutable.slice(workspacePrefix.length),
+      "verification.command[0]",
+    );
   if (!allowedExecutables.has(executable) && !workspaceExecutable)
     throw new Error(
       "verification executable must be a supported toolchain or a workspace-local wrapper",

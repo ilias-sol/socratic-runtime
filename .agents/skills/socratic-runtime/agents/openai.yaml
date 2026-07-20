@@ -1,0 +1,4 @@
+interface:
+  display_name: "Socratic Runtime"
+  short_description: "Choose minimal, leakage-safe tutoring actions"
+  default_prompt: "Use $socratic-runtime to classify this learning state and return a policy-safe structured decision."

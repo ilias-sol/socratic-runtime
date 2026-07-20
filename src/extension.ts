@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { attentionLineRange, currentSymbolLine } from "./attention.js";
+import { applyAssessmentTransition } from "./assessmentTransition.js";
 import {
   autoCheckDelay,
   isCurrentAnalysisContext,
@@ -874,47 +875,18 @@ class SocraticRuntime implements vscode.Disposable {
         providerResult.decision,
         reduced,
       );
-      this.state.alternativeStrategyProbability =
-        providerResult.decision.alternativeStrategyProbability;
-      this.state.modelAssessmentCount += 1;
-      this.state.latestVerification = result;
-      this.state.lastFailureFingerprint = result.fingerprint;
-      this.state.observedFailureFingerprints.push(result.fingerprint);
-      this.state.lastCode = currentCode;
-
       const assessment = providerResult.decision;
-      if (assessment.progressAssessment === "meaningful")
-        this.state.semanticProgressScore += 1;
-      if (assessment.progressAssessment === "meaningful") {
-        this.state.struggleEpisode += 1;
-        this.state.episodeHasIntervention = false;
-        this.state.episodeSupportCount = 0;
-      }
-      if (assessment.learnerState === "experimenting")
-        this.state.experimentationEvidence += 1;
-      if (assessment.learnerState === "stalled" && reduced.equivalent)
-        this.state.equivalentFailureCount += 1;
-      else if (assessment.progressAssessment === "meaningful")
-        this.state.equivalentFailureCount = 0;
-      this.state.phase =
-        assessment.learnerState === "stalled"
-          ? "possibly_stalled"
-          : assessment.learnerState === "experimenting"
-            ? "investigating"
-            : assessment.progressAssessment === "meaningful"
-              ? "progressing"
-              : "observing";
+      const transition = applyAssessmentTransition(
+        this.state,
+        result,
+        currentCode,
+        assessment,
+        reduced,
+        gate,
+      );
       this.appendEvent(
         event(
-          assessment.learnerState === "experimenting"
-            ? "active_experiment"
-            : assessment.progressAssessment === "meaningful"
-              ? "meaningful_progress"
-              : assessment.learnerState === "stalled"
-                ? "equivalent_failure"
-                : !prior
-                  ? "first_failure"
-                  : "behavior_changed",
+          transition.assessmentEventType,
           `GPT-5.6 assessment: ${assessment.learnerState}`,
           {
             progress: assessment.progressAssessment,
@@ -926,12 +898,7 @@ class SocraticRuntime implements vscode.Disposable {
           },
         ),
       );
-      if (
-        !gate.permitted ||
-        gate.action === "remain_silent" ||
-        !gate.visibleText
-      ) {
-        this.state.silentDecisions += 1;
+      if (transition.finalAction === "remain_silent") {
         this.appendEvent(
           event("equivalent_failure", "Final decision: remain silent", {
             modelRecommendation: providerResult.decision.decision,
@@ -948,13 +915,9 @@ class SocraticRuntime implements vscode.Disposable {
         return;
       }
 
-      this.state.interventionsShown += 1;
-      this.state.lastInterventionCheck = this.state.checkCount;
-      this.state.episodeHasIntervention = true;
-      this.state.episodeSupportCount += 1;
-      this.state.phase = "investigating";
+      const visibleText = gate.visibleText!;
       this.appendEvent(
-        event("intervention_shown", `Question: ${gate.visibleText}`, {
+        event("intervention_shown", `Question: ${visibleText}`, {
           modelRecommendation: providerResult.decision.decision,
           localPolicy: gate.reason,
           provider: providerResult.provider,
@@ -964,11 +927,11 @@ class SocraticRuntime implements vscode.Disposable {
           latencyMs: providerResult.latencyMs,
         }),
       );
-      this.setStatus("Socratic: Question Available", gate.visibleText);
-      this.showQuestionCue(gate.visibleText, document);
+      this.setStatus("Socratic: Question Available", visibleText);
+      this.showQuestionCue(visibleText, document);
       void vscode.window
         .showInformationMessage(
-          `Socratic Runtime: ${gate.visibleText}`,
+          `Socratic Runtime: ${visibleText}`,
           "Open Help",
           "I'm Investigating",
           "Dismiss",
@@ -1186,7 +1149,17 @@ class SocraticRuntime implements vscode.Disposable {
     const codexPath = vscode.workspace
       .getConfiguration("socraticRuntime")
       .get<string>("codexPath", "codex");
-    return new CodexCliProvider(this.folder.uri.fsPath, codexPath);
+    return new CodexCliProvider(
+      this.folder.uri.fsPath,
+      codexPath,
+      [],
+      path.join(
+        this.context.extensionPath,
+        ".agents",
+        "skills",
+        "socratic-runtime",
+      ),
+    );
   }
 
   private packet(

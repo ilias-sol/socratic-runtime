@@ -8,7 +8,11 @@
 
 <p align="center">OpenAI Build Week 2026 · Education</p>
 
+<p align="center"><strong>Powered by the Codex CLI and GPT-5.6.</strong> The extension uses your existing Codex sign-in—no application API key is required.</p>
+
 Socratic Runtime is a VS Code extension for programming learners. It checks real coding attempts, asks GPT-5.6 to classify the learner's observable trajectory, and intervenes only when the evidence supports a credible stall. Silence is a deliberate product action—not a missing response.
+
+The extension is the local runtime: it runs the approved executable verifier, constructs a minimized learner-state packet, invokes `codex exec` from an isolated packet-only workspace, and applies deterministic schema, uncertainty, episode, and leakage gates before anything reaches the learner. Codex supplies model-led pedagogical judgment; the host retains authority over execution and safety.
 
 The extension never inserts learner code, never treats model confidence as proof of correctness, and never reveals a solution during an active exercise. Executable checks establish completion. After a verified pass, an exercise may offer an optional author-written reference comparison.
 
@@ -30,6 +34,12 @@ The design separates three responsibilities:
 - **GPT-5.6** classifies progress and selects silence or a minimal Socratic action.
 - **The deterministic host** controls execution, privacy reduction, uncertainty thresholds, episode limits, and leakage safety.
 
+## Research-grounded hypothesis
+
+Socratic Runtime operationalizes a literature-grounded hypothesis: generating and testing one's own solution before receiving instruction can support deeper encoding and transfer, while assistance becomes useful when struggle stops producing progress. This design is informed by the [generation effect](https://doi.org/10.1037/0278-7393.4.6.592), [productive failure](https://doi.org/10.1080/07370000802212669), and desirable-difficulty research.
+
+The hackathon prototype validates that this intervention policy can be implemented and enforced in a live IDE. It does not claim that the software has already caused improved learning outcomes; controlled learner evaluation remains future work.
+
 ## How it works
 
 ```text
@@ -43,6 +53,9 @@ approved verifier runs an isolated snapshot
         |                    +--> optional author reference
         |
         +---- fail ----> minimized learner-state packet
+                             |
+                             v
+                packet-only temporary workspace
                              |
                              v
                     GPT-5.6 via Codex CLI
@@ -136,7 +149,7 @@ npm run package
 
 ## Privacy and safety
 
-The model receives a target-scoped packet: the explicit task, target name and kind, capped previous/current target bodies, compact diff, recent redacted events, aggregate verification evidence, and a scrubbed diagnostic excerpt.
+The model receives a target-scoped packet: the explicit task, target name and kind, capped previous/current target bodies, compact diff, recent redacted events, aggregate verification evidence, and a scrubbed diagnostic excerpt. The Codex process runs from a disposable packet-only workspace containing the packaged Socratic classification skill, not from the learner workspace.
 
 It does not receive unrelated files, dependency trees, raw keystrokes, credentials, exact hidden-test identities, raw verifier output, or the optional reference solution.
 
@@ -145,7 +158,7 @@ The extension also:
 - requires workspace trust and approval of the exact verifier configuration;
 - runs bounded commands with `shell: false` and removes credential-like environment variables;
 - checks unsaved code in disposable snapshots without saving learner files;
-- invokes Codex in an ephemeral read-only sandbox;
+- invokes Codex in an ephemeral read-only sandbox from a packet-only working directory and a credential-reduced environment;
 - rejects malformed output, code, recipes, links, hidden-test disclosure, and multiple questions;
 - retains no session by default and uses a redacted allowlist when retention is enabled.
 
@@ -153,7 +166,7 @@ See [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) for the exact bo
 
 ## Verification
 
-`npm run verify` covers formatting, linting, types, 102 automated TypeScript tests, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, and VSIX creation.
+`npm run verify` covers formatting, linting, types, 107 automated TypeScript tests including a production-state learner journey, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, VSIX creation, and the one-download judge bundle.
 
 The dependency audit reports no known vulnerabilities. These checks verify implementation behavior; they do not prove tutoring efficacy or human learning outcomes.
 

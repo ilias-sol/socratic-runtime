@@ -1,6 +1,6 @@
 # Model integration
 
-The runtime uses non-interactive `codex exec` with the user's existing ChatGPT sign-in, an explicit GPT-5.6 model, medium reasoning, an ephemeral read-only sandbox, and strict JSON Schema output.
+The runtime uses non-interactive `codex exec` with the user's existing ChatGPT sign-in, an explicit GPT-5.6 model, medium reasoning, an ephemeral read-only sandbox, a packaged `$socratic-runtime` skill, and strict JSON Schema output. Each invocation runs from a random packet-only directory rather than the learner workspace.
 
 `luna` is the default responsive mode. `sol` is the optional deeper mode. There is no recorded or offline tutoring mode.
 

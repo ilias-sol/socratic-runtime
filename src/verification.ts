@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import type * as vscode from "vscode";
@@ -28,6 +28,16 @@ function executableFor(
   return snapshotFile
     ? replaced.replaceAll("${snapshot}", snapshotFile)
     : replaced;
+}
+
+export function pathStaysInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return (
+    relative !== "" &&
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 function lastCount(output: string, patterns: RegExp[]): number {
@@ -78,6 +88,16 @@ export class VerificationRunner implements vscode.Disposable {
     if (!path.isAbsolute(command)) return { ready: true };
     try {
       await access(command);
+      const [workspaceRoot, executablePath] = await Promise.all([
+        realpath(folder.uri.fsPath),
+        realpath(command),
+      ]);
+      if (!pathStaysInside(workspaceRoot, executablePath))
+        return {
+          ready: false,
+          reason:
+            "The trusted verifier executable must stay inside the workspace.",
+        };
       return { ready: true };
     } catch {
       return {

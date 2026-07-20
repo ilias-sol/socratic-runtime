@@ -107,6 +107,14 @@ const packagedFiles = vsce.stdout
   .filter(Boolean)
   .sort();
 const expectedFiles = [
+  ".agents/skills/socratic-runtime/SKILL.md",
+  ".agents/skills/socratic-runtime/agents/openai.yaml",
+  ".agents/skills/socratic-runtime/references/intervention-policy.md",
+  ".agents/skills/socratic-runtime/references/leakage-policy.md",
+  ".agents/skills/socratic-runtime/references/misconception-library.md",
+  ".agents/skills/socratic-runtime/references/output-schema.json",
+  ".agents/skills/socratic-runtime/scripts/check_solution_leakage.py",
+  ".agents/skills/socratic-runtime/scripts/score_intervention.py",
   "LICENSE",
   "README.md",
   "dist/extension.js",
@@ -119,9 +127,7 @@ if (JSON.stringify(packagedFiles) !== JSON.stringify(expectedFiles)) {
 }
 if (
   packagedFiles.some((file) =>
-    /(?:^|\/)(?:\.env|auth\.json|src|test|evals|artifacts|\.agents)(?:\/|$)/i.test(
-      file,
-    ),
+    /(?:^|\/)(?:\.env|auth\.json|src|test|evals|artifacts)(?:\/|$)/i.test(file),
   )
 ) {
   failures.push("VSIX contains a private, source, test, or evidence path");

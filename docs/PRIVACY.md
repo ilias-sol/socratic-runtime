@@ -6,6 +6,8 @@ The packet includes the explicit task, language, target name and kind, capped pr
 
 It excludes credentials, unrelated files, dependency trees, raw keystrokes, exact hidden-test identities, and raw verifier output.
 
+The extension stages the packaged Socratic classification skill in a random temporary assessment directory and launches `codex exec` from that directory. The learner workspace is not the Codex working directory or readable workspace root. The subprocess environment is allowlisted for operating-system and Codex sign-in discovery variables; ambient API keys, repository tokens, database URLs, and application secrets are not inherited.
+
 An author-provided reference comparison is read locally only after verified completion and is not added to the GPT learner-state packet.
 
 The extension never reads Codex authentication files, OAuth tokens, environment API keys, or the OS credential store. Session retention is disabled by default. When enabled, a redacted allowlist omits learner code, task text, question text, verifier output, file paths, symbols, and test identities.
