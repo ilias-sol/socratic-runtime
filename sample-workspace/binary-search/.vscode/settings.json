@@ -1,0 +1,12 @@
+{
+  "socraticRuntime.autoCheck": true,
+  "socraticRuntime.autoCheckIntervalMs": 5000,
+  "files.exclude": {
+    ".hypothesis": true,
+    ".pytest_cache": true,
+    ".venv": true
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"]
+}

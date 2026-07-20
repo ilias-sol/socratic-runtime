@@ -1,0 +1,21 @@
+# Product invariants
+
+- GPT-5.6 classifies observable learner state and chooses silence or intervention.
+- Language-specific host heuristics never substitute for the model's pedagogical decision.
+- Executable verification alone establishes correctness and completion.
+- Silence is an explicit action, trace event, and metric.
+- The extension never writes learner code or supplies replacement code during an exercise.
+- A student-visible intervention is one concise question of at most 180 characters.
+- At most one unsolicited question is shown in a struggle episode; the learner may explicitly request up to two additional gated nudges. Meaningful progress opens a new episode.
+- Low confidence, plausible alternative strategies, leakage risk, malformed output, or provider failure produce silence.
+- Every target revision is checked at most once from an isolated unsaved snapshot.
+- New edits cancel or supersede stale verification and model work.
+- Elapsed time and unchanged code never manufacture evidence of struggle.
+- Passing alternatives are accepted regardless of implementation strategy.
+- Observation mode never claims verification or completion.
+- Task text, learner code, verifier output, and model output are untrusted data.
+- Verified mode requires workspace trust and approval of the exact verifier configuration.
+- Silent decisions do not notify or interrupt the learner.
+- Attention cues decorate existing text temporarily and never edit it.
+- Reflection and any author-provided reference comparison appear only after executable verification succeeds.
+- The runtime estimates productive struggle from observable behavior; it makes no claim about cognition or learning outcomes.

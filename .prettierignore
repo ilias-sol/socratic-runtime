@@ -1,0 +1,13 @@
+node_modules
+.pnpm-store
+.agents
+skill-staging
+dist
+dist-types
+artifacts
+sample-workspace/binary-search/.venv
+**/.pytest_cache
+**/__pycache__
+**/.hypothesis
+package-lock.json
+*.vsix
