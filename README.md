@@ -1,26 +1,43 @@
 <p align="center">
-  <img src="media/socratic-runtime-logo.png" alt="Socratic Runtime logo" width="260">
+  <img src="media/socratic-runtime-logo.png" alt="Socratic Runtime" width="260">
 </p>
 
 <h1 align="center">Socratic Runtime</h1>
 
-<p align="center"><strong>OpenAI Build Week 2026 · Education</strong></p>
+<p align="center"><strong>An ambient programming tutor that knows when not to answer.</strong></p>
+<p align="center">OpenAI Build Week 2026 · Education</p>
 
-**An ambient programming tutor that watches the learning process, stays quiet during productive work, and asks one question when GPT-5.6 Luna judges that help would be useful.**
+Socratic Runtime is a VS Code learning companion powered by Codex CLI and GPT-5.6 Luna. It follows the learner's coding trajectory, stays quiet while their reasoning is productive, and asks one focused question when help would be useful.
 
-Socratic Runtime is a VS Code extension powered by Codex CLI. It is deliberately not a chatbot: the learner codes in their own file, and support appears in a small Learning Support view only when the model chooses to intervene. The same model follows the learner's trajectory until it considers the task complete, then ends the session and offers a reference solution for reflection.
+It is not a chatbot. The learner keeps coding in their own file; the tutor enters the flow only when needed.
 
-## Try it
+## The learning loop
 
-Prerequisites: VS Code, Codex CLI, and an existing ChatGPT/Codex sign-in. The extension uses that sign-in; there is no separate Socratic Runtime account or API key.
+```mermaid
+flowchart LR
+    A["Learner edits code"] --> B["2-second pause"]
+    B --> C["Luna reads the task, revision, diagnostics, and trajectory"]
+    C --> D{"What best supports learning now?"}
+    D -->|"Progress"| E["Stay silent"]
+    D -->|"Stalled"| F["Ask one Socratic question"]
+    E --> A
+    F --> A
+    D -->|"Complete"| G["End the session"]
+    G --> H["Show a reference approach"]
+```
 
-1. Download `socratic-runtime-0.3.0.vsix` from the GitHub release.
-2. In VS Code, run **Extensions: Install from VSIX...** and reload when prompted.
-3. Open any programming file. Put the exercise in an `@socratic-task` comment, or select the task text before starting. If neither is present, Luna proposes a task for confirmation.
-4. Run **Socratic Runtime: Start on Current File** from the Command Palette (`Ctrl+Shift+P`).
-5. Code normally. Two seconds after a meaningful edit stops, Luna medium evaluates the current file and recent trajectory.
+Silence is an intentional action. Questions can recur when the learner makes progress and later encounters a new obstacle. **Ask for a Nudge** is always available.
 
-No Python environment, test suite, hidden configuration, or project registration is required. The included binary-search file is only a demonstration.
+## Start learning
+
+You need VS Code, Codex CLI, and an existing ChatGPT/Codex sign-in. Socratic Runtime uses that sign-in—there is no separate account or API key.
+
+1. Download the VSIX from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
+2. In VS Code, run **Extensions: Install from VSIX...** and reload.
+3. Open a programming file and run **Socratic Runtime: Start on Current File** from `Ctrl+Shift+P`.
+4. Code normally.
+
+The task can live in an `@socratic-task` comment:
 
 ```python
 """
@@ -30,59 +47,42 @@ Implement binary search over a sorted list.
 Requirements:
 - Return a matching index.
 - Return -1 when the target is absent.
-- Do not use list.index().
 - Aim for logarithmic time.
 """
 ```
 
-## What happens during a session
+You can also select a task before starting. If neither is available, Luna proposes a task for confirmation.
 
-- **Productive work:** remain silent.
-- **A useful intervention point:** show one concise Socratic question and a notification.
-- **The learner wants help sooner:** **Ask for a Nudge** is always available.
-- **A later stall:** Luna may ask another question; there is no one-question budget.
-- **Task appears complete:** end observation automatically and show a post-completion reference solution, explanation, and complexity comparison.
+No language-specific setup, test suite, hidden configuration, or project registration is required. The same interaction works across text-based languages that Luna can interpret; Python is the included demonstration.
 
-The extension never edits the learner's file. During active work it rejects answers containing code, complete solutions, or mechanical edit recipes. Model output is schema-validated and treated as untrusted.
+## Designed for learning
 
-## Why this exists
+- **Ambient, not conversational:** support lives beside the editor instead of becoming another chat thread.
+- **Trajectory-aware:** Luna compares revisions and recent interventions, not just the current snapshot.
+- **Socratic during the task:** active support is one concise question, never generated solution code.
+- **Reflective after the task:** only after Luna considers the task complete does the session end and reveal a reference approach.
+- **Learner-controlled:** pause, end, or request a nudge at any time. The extension never edits the learner's file.
 
-Programming assistants optimize for producing answers. Socratic Runtime explores a different interaction: use a capable coding model to protect the learner's own reasoning while still noticing when silence stops being useful.
+The product hypothesis is informed by learning-science and neuroscience concepts including active retrieval, productive struggle, feedback timing, and cognitive control. This prototype translates those established ideas into an IDE interaction; it does not claim to have proven an educational or neuroscientific effect.
 
-The design is informed by established findings on active retrieval, productive struggle, feedback timing, and cognitive control. This is a neuroscience- and learning-science-informed product hypothesis—not a claim that this prototype has proven a neuroscientific or educational effect. A controlled learner study remains future work.
+## Runtime boundary
 
-## Scope and honesty
+GPT-5.6 Luna medium owns the pedagogical judgment. The extension owns cancellation, strict schemas, privacy bounds, process isolation, and active-session solution-leakage checks.
 
-GPT-5.6 Luna medium owns the pedagogical classification and judges apparent completion from source code, task requirements, diagnostics, and trajectory. The runtime does **not** execute learner code or prove functional correctness. That removes language- and toolchain-specific setup and permits alternative valid strategies, but it also means completion can be wrong. The UI says _Luna considers this complete_, not _verified correct_.
+Completion is a model assessment, not proof of functional correctness. The interface therefore says **Luna considers the task complete**. The extension does not execute learner code.
 
-The contract is language-neutral and operates on VS Code text documents. Python is the polished demo; Java, JavaScript, C++, and other languages use the same path when Luna can interpret the file and task.
-
-## Architecture
-
-```text
-current file + task + diagnostics + recent trajectory
-                         |
-                    2 s idle debounce
-                         |
-             Codex CLI / GPT-5.6 Luna medium
-                         |
-          remain silent | ask one question | complete
-                                              |
-                              post-completion reference
-```
-
-The host owns execution safety, cancellation, strict schemas, privacy bounds, and solution-leakage checks. It does not override Luna with confidence thresholds, retry counters, or language-specific verifiers.
+Only the active file's bounded task context, revision, diagnostics, and recent trajectory are sent through the authenticated Codex CLI. Credentials remain owned by Codex.
 
 ## Development
 
 ```powershell
 npm install
 npm run verify
-npm run test:live   # authenticated Codex; uses live model quota
+npm run test:live
 ```
 
-`npm run verify` formats, lints, type-checks, runs unit and extension-host tests, audits package contents, creates the VSIX, and builds the judge bundle. `npm run test:live` is intentionally separate because it invokes the real model.
+`npm run verify` covers formatting, linting, types, unit tests, Extension Host activation, package auditing, and release artifacts. `npm run test:live` runs an authenticated beginner journey against GPT-5.6 Luna medium.
 
-See [Judge guide](docs/JUDGE_GUIDE.md), [architecture](docs/ARCHITECTURE.md), [intervention policy](docs/INTERVENTION_POLICY.md), [privacy](docs/PRIVACY.md), and [limitations](docs/LIMITATIONS.md).
+More detail: [architecture](docs/ARCHITECTURE.md) · [intervention policy](docs/INTERVENTION_POLICY.md) · [privacy](docs/PRIVACY.md) · [limitations](docs/LIMITATIONS.md) · [judge guide](docs/JUDGE_GUIDE.md)
 
 MIT licensed.

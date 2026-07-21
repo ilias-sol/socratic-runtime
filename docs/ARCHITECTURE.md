@@ -2,6 +2,19 @@
 
 The extension observes one active VS Code text document. It obtains the task from an `@socratic-task` comment, the current selection, or a Luna-generated proposal that the learner confirms. There are no exercise manifests or language toolchains.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Observing: Start on current file
+    Observing --> Assessing: Meaningful edit + 2-second pause
+    Assessing --> Observing: Productive work / remain silent
+    Assessing --> Question: A question would help
+    Question --> Observing: Learner continues
+    Observing --> Assessing: Ask for a Nudge
+    Assessing --> Complete: Requirements appear satisfied
+    Complete --> Reference: Generate comparison material
+    Reference --> [*]
+```
+
 After a meaningful edit, a two-second debounce builds a bounded assessment packet containing the task, language identifier, filename, prior and current source, compact diff, editor diagnostics, trajectory summary, recent decisions, and whether help was explicitly requested. A new edit cancels an in-flight request.
 
 Codex CLI runs GPT-5.6 Luna with medium reasoning in an ephemeral, read-only temporary directory. A packaged `$socratic-runtime` skill supplies the teaching contract. Strict JSON schemas allow three actions: silence, one question, or completion.

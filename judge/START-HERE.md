@@ -2,7 +2,7 @@
 
 The bundle contains the packaged extension and one plain Python demonstration file. Python does not need to be installed because Socratic Runtime does not execute learner code.
 
-1. In VS Code, run **Extensions: Install from VSIX...** and choose `socratic-runtime-0.3.0.vsix`.
+1. In VS Code, run **Extensions: Install from VSIX...** and choose `socratic-runtime-0.1.0.vsix`.
 2. Reload VS Code, then open `binary-search-demo/binary_search.py`. Trust the folder if VS Code shows its standard workspace-trust prompt.
 3. Confirm Codex CLI is installed and signed in with your existing ChatGPT/Codex account (`codex login status`). No new account or API key is needed.
 4. Press `Ctrl+Shift+P` and run **Socratic Runtime: Start on Current File**.

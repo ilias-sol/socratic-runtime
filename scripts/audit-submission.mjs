@@ -9,8 +9,8 @@ const failures = [];
 const commands = packageJson.contributes?.commands ?? [];
 const settings = packageJson.contributes?.configuration?.properties ?? {};
 
-if (packageJson.version !== "0.3.0")
-  failures.push("release version must be 0.3.0");
+if (packageJson.version !== "0.1.0")
+  failures.push("release version must be 0.1.0");
 if (commands.length !== 7)
   failures.push(`expected 7 commands, found ${commands.length}`);
 if (settings["socraticRuntime.idleDelayMs"]?.default !== 2_000)
