@@ -8,15 +8,15 @@
 
 <p align="center">OpenAI Build Week 2026 · Education</p>
 
-<p align="center"><strong>Powered by the Codex CLI and GPT-5.6.</strong> The extension uses your existing Codex sign-in—no application API key is required.</p>
+<p align="center"><strong>Powered by the Codex CLI and GPT-5.6.</strong> If you already have Codex access through ChatGPT, the extension reuses that local Codex sign-in—no Socratic Runtime account or application API key is required.</p>
 
-Socratic Runtime is a VS Code extension for programming learners. Install it, use the Codex CLI with your existing ChatGPT sign-in, place the assignment beside the code, and start learning—there is no Socratic Runtime account, application API key, or separate learning platform. It checks real coding attempts, asks GPT-5.6 to classify the learner's observable trajectory, and intervenes only when the evidence supports a credible stall. Silence is a deliberate product action—not a missing response.
+Socratic Runtime is a VS Code extension for programming learners. Install it, use the Codex CLI with your existing ChatGPT subscription sign-in, place the assignment beside the code, and start learning—there is no Socratic Runtime registration, application API key, hosted tutoring backend, or separate learning platform. Codex CLI and the Codex IDE extension share cached authentication, so an existing local sign-in can carry into the tutoring flow. Socratic Runtime checks real coding attempts, asks GPT-5.6 to classify the learner's observable trajectory, and intervenes only when the evidence supports a credible stall. Silence is a deliberate product action—not a missing response.
 
 The extension is the local runtime: it runs the approved executable verifier, constructs a minimized learner-state packet, invokes `codex exec` from an isolated packet-only workspace, and applies deterministic schema, uncertainty, episode, and leakage gates before anything reaches the learner. Codex supplies model-led pedagogical judgment; the host retains authority over execution and safety.
 
 The extension never inserts learner code, never treats model confidence as proof of correctness, and never reveals a solution during an active exercise. Executable checks establish completion. After a verified pass, an exercise may offer an optional author-written reference comparison.
 
-> **Current scope:** Socratic Runtime can guide any supported source file with an explicit task marker. In test-backed Python, JavaScript, or TypeScript projects, Setup Doctor can propose pytest, Vitest, Jest, or Node test-runner configuration and run ordinary tests in a disposable project copy. Python and pytest remain the fully exercised demonstration path.
+> **Current scope:** The runtime contract is language-neutral and accepts approved, bounded verifier commands for toolchains including Java, Maven, Gradle, .NET, Rust, and Go. Setup Doctor currently generates presets for pytest, Vitest, Jest, and Node's test runner. Python and pytest remain the fully exercised end-to-end demonstration path; other toolchains require author configuration and should not be read as equally validated.
 
 ## One-minute setup
 
@@ -44,11 +44,11 @@ The design separates three responsibilities:
 - **GPT-5.6** classifies progress and selects silence or a minimal Socratic action.
 - **The deterministic host** controls execution, privacy reduction, uncertainty thresholds, episode limits, and leakage safety.
 
-## Research-grounded hypothesis
+## Research-grounded product hypothesis
 
-Socratic Runtime operationalizes a literature-grounded hypothesis: generating and testing one's own solution before receiving instruction can support deeper encoding and transfer, while assistance becomes useful when struggle stops producing progress. This design is informed by the [generation effect](https://doi.org/10.1037/0278-7393.4.6.592), [productive failure](https://doi.org/10.1080/07370000802212669), and desirable-difficulty research.
+Research on cognitive interference, including the established [Stroop effect](https://doi.org/10.1037/h0054651), shows that competing information can disrupt goal-directed processing. Research on the [generation effect](https://doi.org/10.1037/0278-7393.4.6.592) and [productive failure](https://doi.org/10.1080/07370000802212669) provides a separate basis for letting learners generate and test an attempt before instruction. Socratic Runtime translates these findings into an engineering hypothesis: avoid adding solution-level guidance while observable work remains productive, then introduce minimal assistance when progress credibly stalls.
 
-The hackathon prototype validates that this intervention policy can be implemented and enforced in a live IDE. It does not claim that the software has already caused improved learning outcomes; controlled learner evaluation remains future work.
+The cited research motivates the policy; it does not prove that this particular coding intervention improves learning. The hackathon prototype validates that the policy can be implemented and safety-gated in a live IDE. Establishing educational benefit would require controlled learner evaluation with delayed retention and transfer measures, not only task completion.
 
 ## How it works
 
@@ -186,7 +186,7 @@ The dependency audit reports no known vulnerabilities. These checks verify imple
 
 ## Scope and limitations
 
-- Python and pytest are the fully exercised demonstration. Vitest, Jest, and Node test-runner presets depend on each repository's existing scripts and dependencies.
+- Python and pytest are the fully exercised demonstration. Vitest, Jest, and Node test-runner presets depend on each repository's existing scripts and dependencies. Java task parsing and bounded Java, Maven, and Gradle verifier configurations are supported in the contract, but no Java project has completed the full end-to-end certification matrix yet.
 - Disposable verification excludes repositories, dependencies, caches, symlinks, common secret files, and workspaces above 50,000 copied files or 256 MB. JavaScript dependencies are linked by location rather than copied.
 - Packaged behavior is tested on Windows; macOS and Linux remain unverified.
 - Live assessment requires Codex authentication, network access, and model availability.
