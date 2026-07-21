@@ -35,6 +35,7 @@ describe("trusted exercise config", () => {
           command: ["${workspaceFolder}/gradlew.bat", "test"],
           timeoutMs: 30_000,
           snapshotExtension: ".java",
+          workspaceStrategy: "copy",
         },
       }),
     ).toMatchObject({ language: "java", verification: { type: "command" } });
@@ -95,6 +96,10 @@ describe("trusted exercise config", () => {
       },
     ],
     ["unknown field", { unexpected: true }],
+    [
+      "unknown workspace strategy",
+      { verification: { workspaceStrategy: "in-place" } },
+    ],
   ])("rejects %s", (_name, override) => {
     const candidate = valid();
     const merged = {

@@ -94,6 +94,22 @@ function assess(
 }
 
 describe("production assessment journey", () => {
+  it("keeps guidance-only reviews distinct from executable failures", () => {
+    const state = { ...initialState(), mode: "guidance" as const };
+    const result = { ...verification("guidance"), snapshotVerified: false };
+    expect(
+      assess(
+        state,
+        result,
+        "revision",
+        decision({ learnerState: "stalled", progressAssessment: "none" }),
+      ),
+    ).toMatchObject({ assessmentEventType: "guidance_review" });
+    expect(state.equivalentFailureCount).toBe(0);
+    expect(state.lastFailureFingerprint).toBeNull();
+    expect(state.observedFailureFingerprints).toEqual([]);
+  });
+
   it("preserves struggle, intervenes once, and leaves completion to verification", () => {
     const state = initialState();
 

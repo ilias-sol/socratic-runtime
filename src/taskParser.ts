@@ -193,6 +193,20 @@ export function selectedTask(
   };
 }
 
+export function taskMarkerFor(languageId: string, text: string): string {
+  const body = text
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd());
+  const language = languageId.toLowerCase();
+  if (language === "python") return ['"""', marker, ...body, '"""'].join("\n");
+  const prefix = ["sql", "lua"].includes(language) ? "--" : "//";
+  return [
+    `${prefix} ${marker}`,
+    ...body.map((line) => `${prefix} ${line}`),
+  ].join("\n");
+}
+
 export type TaskBindingStatus = "unchanged" | "changed" | "missing";
 
 export function classifyTaskBinding(

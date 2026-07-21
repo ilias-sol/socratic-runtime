@@ -36,6 +36,7 @@ const allowedVerificationKeys = new Set([
   "command",
   "timeoutMs",
   "snapshotExtension",
+  "workspaceStrategy",
 ]);
 const allowedDemoKeys = new Set(["starterFile"]);
 const allowedCompletionKeys = new Set([
@@ -146,6 +147,11 @@ export function validateExerciseConfig(value: unknown): ExerciseConfig {
     throw new Error(
       "verification.snapshotExtension must look like .py or .java",
     );
+  if (
+    verification.workspaceStrategy !== undefined &&
+    !["snapshot", "copy"].includes(verification.workspaceStrategy)
+  )
+    throw new Error("verification.workspaceStrategy must be snapshot or copy");
   if (
     !Number.isInteger(verification.timeoutMs) ||
     verification.timeoutMs < 1000 ||

@@ -2,7 +2,7 @@
   "name": "socratic-runtime",
   "displayName": "Socratic Runtime",
   "description": "A GPT-5.6 Socratic IDE tutor that evaluates learner progress before intervening.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "socratic-runtime",
   "license": "MIT",
   "repository": {
@@ -46,7 +46,15 @@
       },
       {
         "command": "socraticRuntime.useSelectionAsTask",
-        "title": "Socratic Runtime: Use Selection as Task"
+        "title": "Socratic Runtime: Start Session from Selection"
+      },
+      {
+        "command": "socraticRuntime.copySelectionAsTaskMarker",
+        "title": "Socratic Runtime: Copy Selection as Task Marker"
+      },
+      {
+        "command": "socraticRuntime.runSetupDoctor",
+        "title": "Socratic Runtime: Run Setup Doctor"
       },
       {
         "command": "socraticRuntime.openDecisionTrace",
@@ -102,6 +110,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "socraticRuntime.runSetupDoctor",
+          "when": "view == socraticRuntime.help && !socraticRuntime.active",
+          "group": "navigation@0"
+        },
+        {
           "command": "socraticRuntime.runCheck",
           "when": "view == socraticRuntime.help",
           "group": "navigation@1"
@@ -148,7 +161,7 @@
         "socraticRuntime.autoCheck": {
           "type": "boolean",
           "default": true,
-          "description": "Quietly verify each new target-file revision while a verified session is active."
+          "description": "Quietly review each new target-file revision. Verified sessions run approved tests; Guidance-only sessions make no correctness claim."
         },
         "socraticRuntime.autoCheckIntervalMs": {
           "type": "number",

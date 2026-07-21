@@ -6,6 +6,8 @@ export const helpActions = [
   "resumeHints",
   "resumeWatching",
   "showReference",
+  "configurePreset",
+  "rerunSetupDoctor",
 ] as const;
 
 export type HelpAction = (typeof helpActions)[number];

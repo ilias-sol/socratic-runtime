@@ -26,6 +26,6 @@ if ($codex) {
 
 Write-Host ""
 Write-Host "Demo setup complete."
-Write-Host "1. Install socratic-runtime-0.1.0.vsix in VS Code."
+Write-Host "1. Install socratic-runtime-0.2.0.vsix in VS Code."
 Write-Host "2. Open binary-search-demo and open binary_search.py."
 Write-Host "3. Run 'Socratic Runtime: Start Session'."

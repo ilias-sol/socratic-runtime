@@ -10,6 +10,8 @@ describe("Learning Support message validation", () => {
     "resumeHints",
     "resumeWatching",
     "showReference",
+    "configurePreset",
+    "rerunSetupDoctor",
   ])("accepts the allowlisted action %s", (action) => {
     expect(isHelpAction(action)).toBe(true);
   });

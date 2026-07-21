@@ -1,6 +1,6 @@
 # Intervention policy
 
-The host sends every new failed target revision to GPT-5.6 with its previous target, compact diff, abstracted verification, redacted diagnostic excerpt, recent events, and intervention history.
+In verified mode, the host sends every new failed target revision to GPT-5.6 with its previous target, compact diff, abstracted verification, redacted diagnostic excerpt, recent events, and intervention history. In Guidance-only mode it sends the same target-scoped trajectory with explicitly non-executable editor evidence.
 
 GPT-5.6 returns:
 
@@ -10,6 +10,8 @@ GPT-5.6 returns:
 - confidence, alternative-strategy probability, leakage risk, reasons, and reevaluation trigger.
 
 Silence is preferred whenever productive struggle remains plausible. A repeated failure is evidence, not an automatic stall. Only `stalled` with no meaningful progress can produce a question.
+
+Guidance-only assessment may produce the same bounded questions, but it cannot create a passing result, a verified-completion event, or an author-reference unlock. Its events are labelled guidance reviews rather than failures.
 
 The local gate blocks an unsolicited intervention when confidence is below 0.70, alternative-strategy probability is at least 0.65, leakage risk exceeds 0.15, the short cooldown is active, or the current struggle episode already received a question.
 

@@ -1,17 +1,18 @@
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { root, run } from "./lib.mjs";
 
 const artifacts = path.join(root, "artifacts");
 const bundle = path.join(artifacts, "judge-bundle");
 const archive = path.join(artifacts, "socratic-runtime-judge-bundle.zip");
+const packageJson = JSON.parse(
+  await readFile(path.join(root, "package.json"), "utf8"),
+);
+const vsixName = `socratic-runtime-${packageJson.version}.vsix`;
 await rm(bundle, { recursive: true, force: true });
 await rm(archive, { force: true });
 await mkdir(bundle, { recursive: true });
-await cp(
-  path.join(artifacts, "socratic-runtime-0.1.0.vsix"),
-  path.join(bundle, "socratic-runtime-0.1.0.vsix"),
-);
+await cp(path.join(artifacts, vsixName), path.join(bundle, vsixName));
 await cp(
   path.join(root, "judge", "START-HERE.md"),
   path.join(bundle, "START-HERE.md"),
