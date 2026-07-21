@@ -12,7 +12,7 @@ The recommended artifact is `socratic-runtime-judge-bundle.zip`. It contains the
    powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
    ```
 
-4. Install the included `socratic-runtime-0.2.0.vsix` with **Extensions: Install from VSIX**.
+4. Install the included `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
 5. Open `binary-search-demo`, trust the workspace, and open `binary_search.py`. This is the learner's working file, not a reference answer.
 6. Run **Socratic Runtime: Start Session**.
 7. Review and approve the exact verifier command.

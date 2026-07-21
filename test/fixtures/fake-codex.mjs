@@ -6,6 +6,7 @@ const valueAfter = (flag) => args[args.indexOf(flag) + 1];
 const schema = JSON.parse(readFileSync(valueAfter("--output-schema"), "utf8"));
 if (
   args[0] !== "exec" ||
+  !args.includes("--skip-git-repo-check") ||
   !args.includes("--ephemeral") ||
   valueAfter("--sandbox") !== "read-only" ||
   valueAfter("--model") !== "gpt-5.6-luna" ||

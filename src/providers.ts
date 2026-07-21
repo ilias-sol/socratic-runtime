@@ -238,6 +238,7 @@ export class CodexCliProvider implements PedagogicalModelProvider {
     ].join("\n\n");
     const args = [
       "exec",
+      "--skip-git-repo-check",
       "--ephemeral",
       "--sandbox",
       "read-only",

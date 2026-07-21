@@ -133,7 +133,12 @@ async function main(): Promise<void> {
     "persistent-stall.py",
     "correct-half-open.py",
   ];
-  const provider = new CodexCliProvider(workspace, codexPath);
+  const provider = new CodexCliProvider(
+    workspace,
+    codexPath,
+    [],
+    path.join(root, ".agents", "skills", "socratic-runtime"),
+  );
   const state = initialState(path.join(workspace, "binary_search.py"));
   const observations: Array<Record<string, unknown>> = [];
 

@@ -20,7 +20,7 @@ The extension never inserts learner code, never treats model confidence as proof
 
 ## Install the packaged extension
 
-1. Download `socratic-runtime-0.2.0.vsix` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
+1. Download `socratic-runtime-0.2.1.vsix` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
 2. In VS Code, run **Extensions: Install from VSIX** and select the downloaded file.
 3. Reload VS Code when prompted.
 
@@ -138,7 +138,7 @@ The recommended judge bundle contains the packaged extension, binary-search work
    powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
    ```
 
-3. Install the included `socratic-runtime-0.2.0.vsix` with **Extensions: Install from VSIX**.
+3. Install the included `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
 4. Open `binary-search-demo` in VS Code, trust the workspace, and open `binary_search.py`.
 5. Run **Socratic Runtime: Start Session**, review the exact verifier command, and approve it.
 6. Copy the numbered files in `demo-states` into `binary_search.py` in sequence to exercise first failure, progress, repeated struggle, and verified completion.

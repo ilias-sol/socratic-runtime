@@ -12,7 +12,7 @@ powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
 
 Then:
 
-1. Install `socratic-runtime-0.2.0.vsix` with **Extensions: Install from VSIX**.
+1. Install `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
 2. Open `binary-search-demo` in VS Code and trust the workspace.
 3. Open `binary_search.py` and run **Socratic Runtime: Start Session**.
 4. Review and approve the exact verifier command.
