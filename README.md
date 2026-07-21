@@ -11,6 +11,15 @@ Socratic Runtime is a VS Code learning companion powered by Codex CLI and GPT-5.
 
 It is not a chatbot. The learner keeps coding in their own file; the tutor enters the flow only when needed.
 
+## Built with Codex and GPT-5.6
+
+GPT-5.6 has two distinct roles in Socratic Runtime:
+
+- **GPT-5.6 Sol — development partner:** I created the codebase end to end through an agentic, “vibe-coding” workflow with Codex. Sol was my implementation and brainstorming partner across architecture exploration, TypeScript development and refactoring, test creation, adversarial review, UI refinement, documentation, dependency auditing, and VSIX release preparation. I remained responsible for the learning hypothesis, product direction, pedagogical boundaries, architecture decisions, and acceptance of the final behavior.
+- **GPT-5.6 Luna medium — part of the product:** The installed extension invokes Luna through the authenticated Codex CLI after meaningful learner revisions. Luna reads a bounded view of the task, current and previous code, editor diagnostics, and recent trajectory, then chooses whether to `remain_silent`, `ask_question`, or `complete`. It can also propose a task when none is supplied and prepare the post-completion reference approach.
+
+The implementation was produced through this Codex-led development workflow, while the shipped product uses Codex CLI as its reasoning bridge to Luna. The same existing ChatGPT/Codex sign-in supports the runtime, so learners do not need a separate API key or product account.
+
 ## The learning loop
 
 ```mermaid
