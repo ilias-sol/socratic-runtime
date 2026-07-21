@@ -25,8 +25,11 @@ export function applyAssessmentTransition(
     assessment.alternativeStrategyProbability;
   state.modelAssessmentCount += 1;
   state.latestVerification = result;
-  state.lastFailureFingerprint = result.fingerprint;
-  state.observedFailureFingerprints.push(result.fingerprint);
+  state.lastFailureFingerprint = result.snapshotVerified
+    ? result.fingerprint
+    : null;
+  if (result.snapshotVerified)
+    state.observedFailureFingerprints.push(result.fingerprint);
   state.lastCode = currentCode;
 
   if (assessment.progressAssessment === "meaningful") {
@@ -37,7 +40,11 @@ export function applyAssessmentTransition(
   }
   if (assessment.learnerState === "experimenting")
     state.experimentationEvidence += 1;
-  if (assessment.learnerState === "stalled" && reducer.equivalent)
+  if (
+    result.snapshotVerified &&
+    assessment.learnerState === "stalled" &&
+    reducer.equivalent
+  )
     state.equivalentFailureCount += 1;
   else if (assessment.progressAssessment === "meaningful")
     state.equivalentFailureCount = 0;
@@ -51,8 +58,9 @@ export function applyAssessmentTransition(
           ? "progressing"
           : "observing";
 
-  const assessmentEventType: LearningEvent["type"] =
-    assessment.learnerState === "experimenting"
+  const assessmentEventType: LearningEvent["type"] = !result.snapshotVerified
+    ? "guidance_review"
+    : assessment.learnerState === "experimenting"
       ? "active_experiment"
       : assessment.progressAssessment === "meaningful"
         ? "meaningful_progress"

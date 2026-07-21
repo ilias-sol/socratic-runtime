@@ -11,9 +11,9 @@ def binary_search(values, target):
     pass
 ```
 
-Supported task markers include Python triple quotes, contiguous `#`, `//`, or `--` comments, and `/* ... */` blocks. With multiple markers, cursor proximity selects the task. **Use Selection as Task** is an explicit fallback and still requires a detectable following symbol.
+Supported task markers include Python triple quotes, contiguous `#`, `//`, or `--` comments, and `/* ... */` blocks. With multiple markers, cursor proximity selects the task. **Start Session from Selection** is an explicit fallback and still requires a detectable following symbol. **Copy Selection as Task Marker** places a language-appropriate durable marker on the clipboard; the extension never inserts it into learner code.
 
-Changing task text or its target association during a session switches the session to Observation Only. Task text is untrusted and never configures verification.
+Changing task text or its target association during a session switches the session to Guidance only and requires a new session before verification can resume. Task text is untrusted and never configures verification.
 
 Verified mode uses `.socratic/exercise.json`:
 
@@ -28,7 +28,8 @@ Verified mode uses `.socratic/exercise.json`:
     "type": "command",
     "command": ["${python}", "-m", "pytest", "-q"],
     "timeoutMs": 15000,
-    "snapshotExtension": ".py"
+    "snapshotExtension": ".py",
+    "workspaceStrategy": "copy"
   },
   "completion": {
     "referenceSolution": "reference/half-open.py",
@@ -39,7 +40,9 @@ Verified mode uses `.socratic/exercise.json`:
 }
 ```
 
-The command must be an argument array using an approved toolchain executable or workspace-local wrapper. The harness reads the isolated source from `${snapshot}` or `SOCRATIC_SNAPSHOT`. The bundled Python harness also supports `SOCRATIC_SOLUTION` for compatibility.
+The command must be an argument array using an approved toolchain executable or workspace-local wrapper. With `workspaceStrategy: "snapshot"` (the default), the harness reads the isolated source from `${snapshot}` or `SOCRATIC_SNAPSHOT`. With `workspaceStrategy: "copy"`, the runtime creates a bounded disposable project, replaces the configured target with the unsaved revision, and runs ordinary repository tests from that copy. The bundled Python harness also supports `SOCRATIC_SOLUTION` for compatibility.
+
+Setup Doctor can generate copy-mode configurations for detected pytest, Vitest, Jest, and Node test-runner projects. Detection never bypasses command approval.
 
 `completion` is optional. Its workspace-relative reference file is not read or shown until the learner's own snapshot passes executable verification. Completion metadata is bounded and HTML-escaped by the help view.
 

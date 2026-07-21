@@ -9,6 +9,7 @@
 - Relative path traversal, unknown fields, inline interpreter evaluation, and `npx` auto-downloads are rejected.
 - Workspace-local verifier wrappers are checked lexically and after real-path resolution, including symlink escape protection.
 - The verifier receives a disposable unsaved snapshot and a time limit. Cancellation terminates the owned process tree on Windows.
+- Ordinary-project mode creates a bounded disposable copy, replaces only the copied target, and excludes repositories, dependencies, caches, symlinks, common secret/key files, and oversized workspaces.
 - Environment variables whose names indicate tokens, secrets, passwords, API keys, or authentication are removed before verifier launch.
 
 ## Untrusted inputs
@@ -22,3 +23,5 @@ Model output must match a strict schema. The deterministic gate normalizes encod
 New edits cancel stale verification or Codex work. Duplicate source/evidence pairs are not reassessed unless the learner explicitly requests a bounded follow-up nudge. Provider errors fail to silence.
 
 Optional reference comparisons are exercise-authored workspace files declared in the validated configuration. They are size-bounded, HTML-escaped, included in the approval fingerprint, and unavailable until executable verification passes.
+
+Setup Doctor may detect framework metadata and write `.socratic/exercise.json` after an explicit action. Detection never executes package scripts. Start Session separately displays and fingerprints the exact command before it can run.

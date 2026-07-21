@@ -5,9 +5,18 @@ import {
   findTargetSymbol,
   parseTaskCandidates,
   selectedTask,
+  taskMarkerFor,
 } from "../src/taskParser.js";
 
 describe("task parser", () => {
+  it("formats durable task markers without editing learner files", () => {
+    expect(taskMarkerFor("python", "Find the target\nUse O(log n)")).toBe(
+      '"""\n@socratic-task\nFind the target\nUse O(log n)\n"""',
+    );
+    expect(taskMarkerFor("typescript", "Find the target")).toBe(
+      "// @socratic-task\n// Find the target",
+    );
+  });
   it("parses a triple-quoted task and associates the following function", () => {
     const source = `"""\n@socratic-task\nImplement search.\n"""\n\ndef binary_search(values, target):\n    pass\n`;
     const tasks = parseTaskCandidates(source);

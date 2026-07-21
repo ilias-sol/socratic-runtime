@@ -1,5 +1,6 @@
 export type AnalysisMode = "luna" | "sol";
-export type VerificationMode = "verified" | "observation";
+export type VerificationMode = "verified" | "guidance";
+export type WorkspaceStrategy = "snapshot" | "copy";
 export type SessionPhase =
   | "observing"
   | "progressing"
@@ -46,6 +47,7 @@ export interface LearningEvent {
     | "behavior_changed"
     | "meaningful_progress"
     | "active_experiment"
+    | "guidance_review"
     | "intervention_shown"
     | "hint_dismissed"
     | "hint_acknowledged"
@@ -121,6 +123,7 @@ export interface ExerciseConfig {
     command: string[];
     timeoutMs: number;
     snapshotExtension?: string;
+    workspaceStrategy?: WorkspaceStrategy;
   };
   demo?: {
     starterFile: string;

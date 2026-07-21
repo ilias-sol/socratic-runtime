@@ -13,6 +13,12 @@ import {
   shouldRunAutoCheck,
 } from "./autoCheck.js";
 import { loadExerciseConfig } from "./config.js";
+import {
+  configForPreset,
+  detectFrameworkPresets,
+  type FrameworkPreset,
+} from "./frameworkPresets.js";
+import { guidanceResult } from "./guidance.js";
 import type { HelpAction } from "./helpActions.js";
 import {
   event,
@@ -42,6 +48,7 @@ import {
   findTargetSymbol,
   parseTaskCandidates,
   selectedTask,
+  taskMarkerFor,
 } from "./taskParser.js";
 import type {
   AnalysisMode,
@@ -52,7 +59,12 @@ import type {
   SessionState,
   TargetSymbol,
 } from "./types.js";
-import { formatTrace, SocraticHelpView, showPolicyComparison } from "./ui.js";
+import {
+  formatTrace,
+  SocraticHelpView,
+  showPolicyComparison,
+  type SetupDoctorCheck,
+} from "./ui.js";
 import { VerificationRunner } from "./verification.js";
 
 const LIVE_MODEL_TIMEOUT_MS = 30_000;
@@ -101,6 +113,13 @@ class SocraticRuntime implements vscode.Disposable {
   private lastChangedLines: number[] = [];
   private activeModelAbort: AbortController | null = null;
   private supportRequestInFlight = false;
+  private sessionLanguage = "unknown";
+  private doctorPresets: FrameworkPreset[] = [];
+  private doctorContext: {
+    folder: vscode.WorkspaceFolder;
+    target: TargetSymbol;
+    targetFile: string;
+  } | null = null;
   private readonly assessedRevisionKeys = new Set<string>();
 
   constructor(private readonly context: vscode.ExtensionContext) {
@@ -160,11 +179,24 @@ class SocraticRuntime implements vscode.Disposable {
       : "Open the Socratic Runtime decision trace";
   }
 
+  private watchingStatus(): string {
+    return this.state?.mode === "guidance"
+      ? "Socratic: Guidance Only"
+      : "Socratic: Watching";
+  }
+
+  private showWatchingView(hintsPaused = false): void {
+    if (this.state?.mode === "guidance")
+      this.helpView.showGuidanceOnly(
+        "No matching approved verifier is configured for this task.",
+      );
+    else this.helpView.showWatching(hintsPaused);
+  }
+
   private startAutoChecks(): void {
     this.stopAutoChecks();
     if (
       !this.state ||
-      this.state.mode !== "verified" ||
       !vscode.workspace
         .getConfiguration("socraticRuntime")
         .get<boolean>("autoCheck", true)
@@ -189,7 +221,6 @@ class SocraticRuntime implements vscode.Disposable {
   private scheduleAutoCheck(initial = false): void {
     if (
       !this.state ||
-      this.state.mode !== "verified" ||
       this.state.phase === "verified_complete" ||
       this.watcherPaused
     )
@@ -226,7 +257,6 @@ class SocraticRuntime implements vscode.Disposable {
     this.clearInactivityTimer();
     if (
       !this.state ||
-      this.state.mode !== "verified" ||
       this.state.phase === "verified_complete" ||
       this.watcherPaused
     )
@@ -340,12 +370,22 @@ class SocraticRuntime implements vscode.Disposable {
         editor.setDecorations(this.attentionDecoration, [range]);
     this.helpView.showQuestion(
       question,
-      "GPT-5.6 assessed the recent attempt trajectory and selected this minimal intervention; executable checks remain authoritative.",
+      this.state?.mode === "guidance"
+        ? "GPT-5.6 compared recent revisions and selected this minimal question. Guidance-only mode makes no correctness or completion claim."
+        : "GPT-5.6 assessed the recent attempt trajectory and selected this minimal intervention; executable checks remain authoritative.",
       (this.state?.episodeSupportCount ?? 0) < MAX_SUPPORTS_PER_EPISODE,
     );
   }
 
   private onHelpAction(action: HelpAction): void {
+    if (action === "configurePreset") {
+      void this.configureDetectedPreset();
+      return;
+    }
+    if (action === "rerunSetupDoctor") {
+      void this.runSetupDoctor();
+      return;
+    }
     if (!this.state) return;
     if (action === "resumeWatching") {
       this.resumeWatching();
@@ -364,8 +404,8 @@ class SocraticRuntime implements vscode.Disposable {
       this.appendEvent(
         event("hint_dismissed", "Question dismissed by learner"),
       );
-      this.setStatus("Socratic: Watching");
-      this.helpView.showWatching(this.hintsPaused);
+      this.setStatus(this.watchingStatus());
+      this.showWatchingView(this.hintsPaused);
       return;
     }
     if (action === "investigating") {
@@ -389,8 +429,12 @@ class SocraticRuntime implements vscode.Disposable {
       return;
     }
     this.hintsPaused = false;
-    this.setStatus("Socratic: Watching");
-    this.helpView.showWatching(false);
+    this.setStatus(this.watchingStatus());
+    if (this.state.mode === "guidance")
+      this.helpView.showGuidanceOnly(
+        "No matching approved verifier is configured for this task.",
+      );
+    else this.helpView.showWatching(false);
   }
 
   private appendEvent(item: ReturnType<typeof event>): void {
@@ -433,7 +477,7 @@ class SocraticRuntime implements vscode.Disposable {
       );
     if (!task) {
       void vscode.window.showWarningMessage(
-        "No valid @socratic-task block was found. Select task text and run ‘Use Selection as Task’.",
+        "No valid @socratic-task block was found. Select task text and run ‘Start Session from Selection’.",
       );
       return null;
     }
@@ -501,7 +545,7 @@ class SocraticRuntime implements vscode.Disposable {
       exercise.targetFile.replaceAll("\\", "/") === relativeTarget &&
       exercise.targetSymbol === resolved.target.name
         ? "Verified"
-        : "Observation Only";
+        : "Guidance Only";
     if (mode === "Verified" && exercise) {
       const setup = await this.verifier.preflight(folder, exercise);
       if (!setup.ready) {
@@ -541,7 +585,7 @@ class SocraticRuntime implements vscode.Disposable {
     );
     if (choice === "Select Different Task") {
       void vscode.window.showInformationMessage(
-        "Select the assignment text, then run ‘Socratic Runtime: Use Selection as Task’. ",
+        "Select the assignment text, then run ‘Socratic Runtime: Start Session from Selection’. ",
       );
       return;
     }
@@ -553,6 +597,7 @@ class SocraticRuntime implements vscode.Disposable {
     const source = editor.document.getText();
     this.folder = folder;
     this.exercise = exercise;
+    this.sessionLanguage = editor.document.languageId;
     this.documentRevision = 0;
     this.scheduledRevision = 0;
     this.hintsPaused = false;
@@ -561,7 +606,7 @@ class SocraticRuntime implements vscode.Disposable {
     this.state = {
       version: 1,
       sessionId: randomUUID(),
-      mode: mode === "Verified" ? "verified" : "observation",
+      mode: mode === "Verified" ? "verified" : "guidance",
       providerMode,
       task: resolved.task,
       targetSymbol: resolved.target,
@@ -595,9 +640,13 @@ class SocraticRuntime implements vscode.Disposable {
     this.setStatus(
       this.state.mode === "verified"
         ? "Socratic: Watching"
-        : "Socratic: Observation Only",
+        : "Socratic: Guidance Only",
     );
-    this.helpView.showWatching(false);
+    if (this.state.mode === "guidance")
+      this.helpView.showGuidanceOnly(
+        "No matching approved verifier is configured for this task.",
+      );
+    else this.helpView.showWatching(false);
     void vscode.commands.executeCommand(
       "setContext",
       "socraticRuntime.active",
@@ -644,6 +693,202 @@ class SocraticRuntime implements vscode.Disposable {
     if (task) await this.startSession(task);
   }
 
+  async copySelectionAsTaskMarker(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.selection.isEmpty) {
+      void vscode.window.showWarningMessage(
+        "Select the assignment text first.",
+      );
+      return;
+    }
+    const marker = taskMarkerFor(
+      editor.document.languageId,
+      editor.document.getText(editor.selection),
+    );
+    await vscode.env.clipboard.writeText(marker);
+    void vscode.window.showInformationMessage(
+      "Copied a durable @socratic-task marker. Paste it directly above the function, method, or class you want to practice.",
+    );
+  }
+
+  async runSetupDoctor(): Promise<void> {
+    const checks: SetupDoctorCheck[] = [];
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      checks.push({
+        label: "Active source file",
+        status: "blocked",
+        detail: "Open the file containing the exercise target.",
+      });
+      this.doctorPresets = [];
+      this.doctorContext = null;
+      this.helpView.showSetupDoctor(checks, 0);
+      await this.openHelp();
+      return;
+    }
+    const folder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    if (!folder) {
+      checks.push({
+        label: "Workspace",
+        status: "blocked",
+        detail: "Open the source file inside a VS Code workspace folder.",
+      });
+      this.doctorPresets = [];
+      this.doctorContext = null;
+      this.helpView.showSetupDoctor(checks, 0);
+      await this.openHelp();
+      return;
+    }
+
+    checks.push({
+      label: "Workspace trust",
+      status: vscode.workspace.isTrusted ? "ready" : "blocked",
+      detail: vscode.workspace.isTrusted
+        ? "The workspace is trusted."
+        : "Trust the workspace before any verifier can run.",
+    });
+    const codexPath = vscode.workspace
+      .getConfiguration("socraticRuntime")
+      .get<string>("codexPath", "codex");
+    const codexStatus = await checkCodexStatus(codexPath);
+    checks.push({
+      label: "Codex and ChatGPT sign-in",
+      status: codexStatus === "ready" ? "ready" : "blocked",
+      detail:
+        codexStatus === "ready"
+          ? "Codex is available through the existing ChatGPT sign-in."
+          : codexStatus === "auth_required"
+            ? "Run codex login; no separate Socratic Runtime account or API key is needed."
+            : "Install Codex CLI or configure socraticRuntime.codexPath.",
+    });
+
+    const source = editor.document.getText();
+    const task = chooseNearestTask(
+      parseTaskCandidates(source),
+      editor.selection.active.line,
+    );
+    const target = task
+      ? findTargetSymbol(
+          source,
+          task,
+          editor.document.uri.fsPath,
+          editor.document.languageId,
+        )
+      : null;
+    checks.push({
+      label: "Socratic task",
+      status: task && target ? "ready" : "blocked",
+      detail:
+        task && target
+          ? `Found “${task.summary}” for ${target.name}().`
+          : "Add an @socratic-task marker directly above a detectable target symbol.",
+    });
+
+    const targetFile = path
+      .relative(folder.uri.fsPath, editor.document.uri.fsPath)
+      .replaceAll("\\", "/");
+    const presets = target
+      ? await detectFrameworkPresets(
+          folder.uri.fsPath,
+          editor.document.languageId,
+        )
+      : [];
+    let exercise: ExerciseConfig | null = null;
+    let configError: string | null = null;
+    try {
+      exercise = await loadExerciseConfig(folder);
+    } catch (error) {
+      configError = error instanceof Error ? error.message : String(error);
+    }
+    const matchesTarget = Boolean(
+      exercise &&
+        target &&
+        exercise.targetFile.replaceAll("\\", "/") === targetFile &&
+        exercise.targetSymbol === target.name,
+    );
+    let verifierReady = false;
+    let verifierDetail = "";
+    if (configError)
+      verifierDetail = `Configuration is invalid: ${configError}`;
+    else if (!exercise)
+      verifierDetail =
+        presets.length > 0
+          ? `${presets.map((preset) => preset.label).join(" or ")} detected. Configure a preset to enable verified mode.`
+          : "No supported verifier was detected; Guidance-only mode remains available.";
+    else if (!matchesTarget)
+      verifierDetail =
+        "The existing verifier configuration targets a different file or symbol.";
+    else {
+      const preflight = await this.verifier.preflight(folder, exercise);
+      verifierReady = preflight.ready;
+      verifierDetail = preflight.ready
+        ? `${formatVerifierCommand(exercise)} is ready for explicit approval.`
+        : (preflight.reason ?? "The configured verifier is unavailable.");
+    }
+    checks.push({
+      label: "Executable verifier",
+      status: verifierReady
+        ? "ready"
+        : presets.length > 0
+          ? "warning"
+          : "blocked",
+      detail: verifierDetail,
+    });
+
+    this.doctorPresets = verifierReady ? [] : presets;
+    this.doctorContext = target ? { folder, target, targetFile } : null;
+    this.helpView.showSetupDoctor(checks, this.doctorPresets.length);
+    await this.openHelp();
+  }
+
+  private async configureDetectedPreset(): Promise<void> {
+    const context = this.doctorContext;
+    if (!context || this.doctorPresets.length === 0) {
+      void vscode.window.showInformationMessage(
+        "Run Setup Doctor with a supported task and test framework first.",
+      );
+      return;
+    }
+    const choice = await vscode.window.showQuickPick(
+      this.doctorPresets.map((preset) => ({
+        label: preset.label,
+        description: preset.detail,
+        preset,
+      })),
+      {
+        title: "Choose a trusted verifier preset",
+        placeHolder:
+          "The exact command will still require approval before it runs",
+      },
+    );
+    if (!choice) return;
+    const existing = await loadExerciseConfig(context.folder).catch(() => null);
+    if (existing) {
+      const overwrite = await vscode.window.showWarningMessage(
+        "Replace the existing .socratic/exercise.json configuration?",
+        { modal: true },
+        "Replace Configuration",
+      );
+      if (overwrite !== "Replace Configuration") return;
+    }
+    const config = configForPreset(
+      context.folder.uri.fsPath,
+      context.targetFile,
+      context.target,
+      choice.preset,
+    );
+    const directory = vscode.Uri.joinPath(context.folder.uri, ".socratic");
+    await vscode.workspace.fs.createDirectory(directory);
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(directory, "exercise.json"),
+      Buffer.from(`${JSON.stringify(config, null, 2)}\n`, "utf8"),
+    );
+    void vscode.window.showInformationMessage(
+      `${choice.preset.label} configured for disposable-project verification. Start Session will show the exact command for approval.`,
+    );
+    await this.runSetupDoctor();
+  }
+
   async runCheck(
     options: { automatic?: boolean; revision?: number } = {},
   ): Promise<void> {
@@ -662,56 +907,65 @@ class SocraticRuntime implements vscode.Disposable {
         );
       return;
     }
-    if (this.state.mode === "observation" || !this.exercise) {
-      if (automatic) return;
-      this.state.silentDecisions += 1;
-      this.appendEvent(
-        event(
-          "check_completed",
-          "No trusted verification configured; remained silent",
-          { decision: "remain_silent", reason: "observation_mode" },
-        ),
-      );
-      this.setStatus("Socratic: Observation Only");
-      void vscode.window.showInformationMessage(
-        "Observation only: executable verification is unavailable, so Socratic Runtime will not claim correctness or completion.",
-      );
-      return;
-    }
-
     this.checking = true;
+    const guidanceOnly = this.state.mode === "guidance" || !this.exercise;
     const checkedRevision = options.revision ?? this.documentRevision;
     const checkedSessionId = this.state.sessionId;
     this.activeAutomaticCheck = automatic;
     this.setStatus(
-      automatic ? "Socratic: Checking Quietly" : "Socratic: Checking",
+      guidanceOnly
+        ? "Socratic: Assessing Guidance Only"
+        : automatic
+          ? "Socratic: Checking Quietly"
+          : "Socratic: Checking",
     );
     this.appendEvent(
-      event("check_started", "Trusted check started", {
-        trigger: automatic ? "automatic_revision" : "manual",
-      }),
+      event(
+        "check_started",
+        guidanceOnly ? "Guidance review started" : "Trusted check started",
+        {
+          trigger: automatic ? "automatic_revision" : "manual",
+          executableVerification: !guidanceOnly,
+        },
+      ),
     );
     try {
       const document = await vscode.workspace.openTextDocument(
         vscode.Uri.file(this.state.targetSymbol.file),
       );
       const currentCode = document.getText();
-      const result = automatic
-        ? await this.verifier.run(this.folder, this.exercise, currentCode)
-        : await vscode.window.withProgress(
-            {
-              location: vscode.ProgressLocation.Notification,
-              title: "Socratic Runtime: running trusted checks",
-              cancellable: true,
-            },
-            async (_progress, token) =>
-              await this.verifier.run(
-                this.folder!,
-                this.exercise!,
-                currentCode,
-                token,
-              ),
-          );
+      const diagnostics = vscode.languages
+        .getDiagnostics(document.uri)
+        .filter(
+          (item) =>
+            item.severity === vscode.DiagnosticSeverity.Error ||
+            item.severity === vscode.DiagnosticSeverity.Warning,
+        )
+        .map((item) => ({
+          severity:
+            item.severity === vscode.DiagnosticSeverity.Error
+              ? ("error" as const)
+              : ("warning" as const),
+          message: item.message,
+        }));
+      const result = guidanceOnly
+        ? guidanceResult(diagnostics)
+        : automatic
+          ? await this.verifier.run(this.folder, this.exercise!, currentCode)
+          : await vscode.window.withProgress(
+              {
+                location: vscode.ProgressLocation.Notification,
+                title: "Socratic Runtime: running trusted checks",
+                cancellable: true,
+              },
+              async (_progress, token) =>
+                await this.verifier.run(
+                  this.folder!,
+                  this.exercise!,
+                  currentCode,
+                  token,
+                ),
+            );
       if (
         result.cancelled ||
         !isCurrentAnalysisContext(
@@ -763,7 +1017,7 @@ class SocraticRuntime implements vscode.Disposable {
       const prior = this.state.latestVerification;
       const reduced = reduceVerification(this.state, result, currentCode);
 
-      if (result.passed) {
+      if (result.passed && this.exercise) {
         this.state.latestVerification = result;
         this.state.lastCode = currentCode;
         this.state.phase = "verified_complete";
@@ -797,17 +1051,21 @@ class SocraticRuntime implements vscode.Disposable {
       if (!reduced.shouldCallModel) {
         this.state.silentDecisions += 1;
         this.state.phase = "observing";
-        this.setStatus("Socratic: Watching");
-        this.helpView.showWatching(this.hintsPaused);
+        this.setStatus(this.watchingStatus());
+        this.showWatchingView(this.hintsPaused);
         return;
       }
 
       if (this.hintsPaused) {
         this.state.silentDecisions += 1;
         this.appendEvent(
-          event("equivalent_failure", "Final decision: remain silent", {
-            reason: "learner_paused_hints",
-          }),
+          event(
+            guidanceOnly ? "guidance_review" : "equivalent_failure",
+            "Final decision: remain silent",
+            {
+              reason: "learner_paused_hints",
+            },
+          ),
         );
         this.setStatus("Socratic: Watching · Hints Paused");
         return;
@@ -822,13 +1080,17 @@ class SocraticRuntime implements vscode.Disposable {
       if (this.assessedRevisionKeys.has(revisionKey)) {
         this.state.silentDecisions += 1;
         this.appendEvent(
-          event("equivalent_failure", "Duplicate revision assessment skipped", {
-            decision: "remain_silent",
-            reason: "revision_already_assessed",
-          }),
+          event(
+            guidanceOnly ? "guidance_review" : "equivalent_failure",
+            "Duplicate revision assessment skipped",
+            {
+              decision: "remain_silent",
+              reason: "revision_already_assessed",
+            },
+          ),
         );
-        this.setStatus("Socratic: Watching");
-        this.helpView.showWatching(this.hintsPaused);
+        this.setStatus(this.watchingStatus());
+        this.showWatchingView(this.hintsPaused);
         return;
       }
       this.assessedRevisionKeys.add(revisionKey);
@@ -843,7 +1105,7 @@ class SocraticRuntime implements vscode.Disposable {
       const assessmentAbort = new AbortController();
       this.activeModelAbort = assessmentAbort;
       this.setStatus("Socratic: Assessing Revision");
-      this.helpView.showAssessing();
+      this.helpView.showAssessing(this.state.mode === "guidance");
       const providerResult = await provider.analyze(packet, {
         mode: this.state.providerMode,
         timeoutMs: LIVE_MODEL_TIMEOUT_MS,
@@ -900,17 +1162,21 @@ class SocraticRuntime implements vscode.Disposable {
       );
       if (transition.finalAction === "remain_silent") {
         this.appendEvent(
-          event("equivalent_failure", "Final decision: remain silent", {
-            modelRecommendation: providerResult.decision.decision,
-            localPolicy: gate.reason,
-            provider: providerResult.provider,
-            fallback: providerResult.fallbackReason ?? "none",
-          }),
+          event(
+            guidanceOnly ? "guidance_review" : "equivalent_failure",
+            "Final decision: remain silent",
+            {
+              modelRecommendation: providerResult.decision.decision,
+              localPolicy: gate.reason,
+              provider: providerResult.provider,
+              fallback: providerResult.fallbackReason ?? "none",
+            },
+          ),
         );
         this.setStatus(
           providerResult.fallbackReason === "authentication_required"
             ? "Socratic: Sign-in Required"
-            : "Socratic: Watching",
+            : this.watchingStatus(),
         );
         return;
       }
@@ -962,13 +1228,12 @@ class SocraticRuntime implements vscode.Disposable {
     if (
       !state ||
       !this.folder ||
-      state.mode !== "verified" ||
       state.phase === "verified_complete" ||
       !state.latestVerification ||
       state.latestVerification.passed
     ) {
       void vscode.window.showInformationMessage(
-        "Run a failed verified check before requesting another nudge.",
+        "Run a revision check before requesting another nudge.",
       );
       return;
     }
@@ -1016,7 +1281,7 @@ class SocraticRuntime implements vscode.Disposable {
     const assessmentAbort = new AbortController();
     this.activeModelAbort = assessmentAbort;
     this.setStatus("Socratic: Preparing Another Nudge");
-    this.helpView.showAssessing();
+    this.helpView.showAssessing(state.mode === "guidance");
     try {
       const providerResult = await this.providerForState().analyze(
         this.packet(result, currentCode, result, currentCode, true),
@@ -1067,8 +1332,8 @@ class SocraticRuntime implements vscode.Disposable {
         !gate.visibleText
       ) {
         currentState.silentDecisions += 1;
-        this.setStatus("Socratic: Watching");
-        this.helpView.showWatching(false);
+        this.setStatus(this.watchingStatus());
+        this.showWatchingView(false);
         void vscode.window.showInformationMessage(
           "No additional nudge passed the safety and confidence checks for this revision.",
         );
@@ -1170,7 +1435,7 @@ class SocraticRuntime implements vscode.Disposable {
     explicitHelpRequested = false,
   ): LearningStatePacket {
     const state = this.state!;
-    const language = this.exercise?.language ?? "unknown";
+    const language = this.exercise?.language ?? this.sessionLanguage;
     const currentTarget = extractTargetCode(
       currentCode,
       state.targetSymbol,
@@ -1230,6 +1495,9 @@ class SocraticRuntime implements vscode.Disposable {
         "one concise question per intervention",
         "consider at least two plausible interpretations",
         "the model owns progress and intervention classification",
+        state.mode === "guidance"
+          ? "guidance-only evidence cannot establish correctness or completion"
+          : "executable verification alone establishes correctness and completion",
         explicitHelpRequested
           ? "the learner explicitly requested one additional nudge"
           : "additional support requires an explicit learner request",
@@ -1277,8 +1545,8 @@ class SocraticRuntime implements vscode.Disposable {
     this.watcherPaused = false;
     this.pendingAutoCheck = true;
     this.appendEvent(event("watcher_resumed", "Automatic watching resumed"));
-    this.setStatus("Socratic: Watching");
-    this.helpView.showWatching(this.hintsPaused);
+    this.setStatus(this.watchingStatus());
+    this.showWatchingView(this.hintsPaused);
     void vscode.commands.executeCommand(
       "setContext",
       "socraticRuntime.watching",
@@ -1393,6 +1661,7 @@ class SocraticRuntime implements vscode.Disposable {
     this.state = null;
     this.exercise = null;
     this.folder = null;
+    this.sessionLanguage = "unknown";
     this.setStatus("Socratic: Inactive");
     this.helpView.showInactive();
     void vscode.commands.executeCommand(
@@ -1452,11 +1721,13 @@ class SocraticRuntime implements vscode.Disposable {
           { reason: `task_binding_${taskBinding}` },
         ),
       );
-      this.setStatus("Socratic: Observation Only");
-      this.state.mode = "observation";
+      this.setStatus("Socratic: Guidance Only");
+      this.state.mode = "guidance";
       this.stopAutoChecks();
       if (this.activeAutomaticCheck) this.verifier.cancel();
-      this.helpView.showObservation();
+      this.helpView.showGuidanceOnly(
+        "The active task binding changed. Start a new session after restoring or selecting the task.",
+      );
       return;
     }
     if (wasVerified) {
@@ -1476,8 +1747,8 @@ class SocraticRuntime implements vscode.Disposable {
     }
     if (!this.watcherPaused) {
       this.resetInactivityTimer();
-      this.setStatus("Socratic: Watching");
-      this.helpView.showWatching(this.hintsPaused);
+      this.setStatus(this.watchingStatus());
+      this.showWatchingView(this.hintsPaused);
     }
     if (this.activeAutomaticCheck) this.verifier.cancel();
     if (!this.watcherPaused) this.scheduleAutoCheck();
@@ -1512,6 +1783,13 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand("socraticRuntime.useSelectionAsTask", () =>
       runtime.useSelectionAsTask(),
+    ),
+    vscode.commands.registerCommand(
+      "socraticRuntime.copySelectionAsTaskMarker",
+      () => runtime.copySelectionAsTaskMarker(),
+    ),
+    vscode.commands.registerCommand("socraticRuntime.runSetupDoctor", () =>
+      runtime.runSetupDoctor(),
     ),
     vscode.commands.registerCommand("socraticRuntime.openDecisionTrace", () =>
       runtime.openDecisionTrace(),

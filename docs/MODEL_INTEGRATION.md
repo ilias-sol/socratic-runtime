@@ -4,7 +4,7 @@ The runtime uses non-interactive `codex exec` with the user's existing ChatGPT s
 
 `luna` is the default responsive mode. `sol` is the optional deeper mode. There is no recorded or offline tutoring mode.
 
-For each new failed revision, GPT-5.6 compares the previous and current target, verification change, redacted diagnostics, and recent trajectory. It explicitly classifies state and progress before selecting silence or an intervention. The host does not preclassify Python progress or require a fixed failure count.
+For each new failed verified revision—or each new Guidance-only revision—GPT-5.6 compares the previous and current target, evidence change, redacted diagnostics, and recent trajectory. It explicitly classifies state and progress before selecting silence or an intervention. Guidance-only packets state that executable evidence is absent and forbid correctness or completion claims. The host does not preclassify Python progress or require a fixed failure count.
 
 Packets contain the explicit task, language, target name and kind, capped previous/current target bodies, compact diff, eight recent events, abstracted current/previous verification, redacted diagnostic excerpt, episode state, permitted actions, and policy constraints.
 

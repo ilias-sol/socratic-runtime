@@ -12,6 +12,8 @@ export async function run(): Promise<void> {
     "socraticRuntime.startSession",
     "socraticRuntime.runCheck",
     "socraticRuntime.useSelectionAsTask",
+    "socraticRuntime.copySelectionAsTaskMarker",
+    "socraticRuntime.runSetupDoctor",
     "socraticRuntime.openDecisionTrace",
     "socraticRuntime.openPolicyComparison",
     "socraticRuntime.resetDemo",
@@ -23,6 +25,6 @@ export async function run(): Promise<void> {
     assert.ok(commands.includes(command), `${command} is registered`);
   }
   console.log(
-    "Socratic Runtime extension-host smoke test passed: extension activated and 10 commands registered.",
+    "Socratic Runtime extension-host smoke test passed: extension activated and 12 commands registered.",
   );
 }

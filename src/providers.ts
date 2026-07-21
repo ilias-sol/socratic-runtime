@@ -231,6 +231,7 @@ export class CodexCliProvider implements PedagogicalModelProvider {
       "Decide whether the learner is making meaningful progress, experimenting, self-correcting, stalled, or uncertain; then decide whether to remain silent or intervene.",
       "Output must be internally consistent: self_correcting, progressing, experimenting, uncertain, or meaningful progress requires remain_silent. Only a stalled state with no meaningful progress may choose a non-silent action.",
       "Executable verification is authoritative for correctness. Do not let a local heuristic make the pedagogical decision for you.",
+      "When packet.verification.snapshotVerified is false, the session is guidance-only: compare revisions conservatively, never imply that tests failed or passed, and never claim correctness or completion.",
       "Return only the smallest permitted pedagogical action. Prefer silence when productive struggle is plausible. Never provide code or hidden-test details.",
       "When packet.state.explicitHelpRequested is true, the learner has explicitly asked for one more nudge. Use only packet.permittedActions and make the next question incrementally more concrete without giving a mechanical recipe.",
       JSON.stringify(packet),

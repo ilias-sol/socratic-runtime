@@ -8,6 +8,7 @@ import { appendBoundedTail } from "./processOutput.js";
 import { terminateProcessTree } from "./processControl.js";
 import { verificationEnvironment } from "./security.js";
 import type { ExerciseConfig, VerificationResult } from "./types.js";
+import { prepareDisposableWorkspace } from "./workspaceCopy.js";
 import {
   infrastructureReasonFor,
   verifierExecutableMissingReason,
@@ -16,10 +17,11 @@ import {
 function executableFor(
   folder: vscode.WorkspaceFolder,
   configured: string,
+  executionRoot = folder.uri.fsPath,
   snapshotFile?: string,
 ): string {
   const workspace = folder.uri.fsPath;
-  const replaced = configured.replace("${workspaceFolder}", workspace);
+  const replaced = configured.replace("${workspaceFolder}", executionRoot);
   if (replaced === "${python}") {
     return process.platform === "win32"
       ? path.join(workspace, ".venv", "Scripts", "python.exe")
@@ -115,23 +117,41 @@ export class VerificationRunner implements vscode.Disposable {
   ): Promise<VerificationResult> {
     this.cancel();
     const [command, ...configuredArgs] = config.verification.command;
-    const executable = executableFor(folder, command!);
     const started = Date.now();
     const snapshotDirectory = await mkdtemp(
       path.join(tmpdir(), "socratic-runtime-"),
     );
+    const copyWorkspace = config.verification.workspaceStrategy === "copy";
+    const executionRoot = copyWorkspace
+      ? path.join(snapshotDirectory, "workspace")
+      : folder.uri.fsPath;
     const configuredExtension = config.verification.snapshotExtension;
     const targetExtension = path.extname(config.targetFile);
-    const snapshotFile = path.join(
-      snapshotDirectory,
-      `candidate${configuredExtension || targetExtension || ".txt"}`,
-    );
-    await writeFile(snapshotFile, sourceSnapshot, "utf8");
-    const args = configuredArgs.map((argument) =>
-      executableFor(folder, argument, snapshotFile),
-    );
-
+    const snapshotFile = copyWorkspace
+      ? path.join(executionRoot, config.targetFile)
+      : path.join(
+          snapshotDirectory,
+          `candidate${configuredExtension || targetExtension || ".txt"}`,
+        );
     try {
+      if (copyWorkspace)
+        await prepareDisposableWorkspace(
+          folder.uri.fsPath,
+          executionRoot,
+          config.targetFile,
+          sourceSnapshot,
+        );
+      else await writeFile(snapshotFile, sourceSnapshot, "utf8");
+      const executable = executableFor(
+        folder,
+        command!,
+        executionRoot,
+        snapshotFile,
+      );
+      const args = configuredArgs.map((argument) =>
+        executableFor(folder, argument, executionRoot, snapshotFile),
+      );
+
       return await new Promise<VerificationResult>((resolve) => {
         let stdout = "";
         let stderr = "";
@@ -140,7 +160,7 @@ export class VerificationRunner implements vscode.Disposable {
         let cancelled = false;
         let spawnError: string | null = null;
         const child = spawn(executable, args, {
-          cwd: folder.uri.fsPath,
+          cwd: executionRoot,
           shell: false,
           windowsHide: true,
           env: {
@@ -164,7 +184,7 @@ export class VerificationRunner implements vscode.Disposable {
           const output = normalizedOutput(
             `${stdout}\n${stderr}`.trim(),
             folder.uri.fsPath,
-            snapshotDirectory,
+            copyWorkspace ? executionRoot : snapshotDirectory,
           );
           const failedTests = Array.from(
             output.matchAll(/^FAILED\s+([^\s]+?)(?:\s+-|$)/gm),
@@ -258,6 +278,28 @@ export class VerificationRunner implements vscode.Disposable {
           terminateProcessTree(child);
         }) ?? { dispose: () => undefined };
       });
+    } catch (error) {
+      const reason =
+        error instanceof Error
+          ? `Disposable verification setup failed: ${error.message}`
+          : "Disposable verification setup failed";
+      return {
+        passed: false,
+        exitCode: null,
+        timedOut: false,
+        cancelled: false,
+        durationMs: Date.now() - started,
+        failedTests: [],
+        passedCount: 0,
+        failedCount: 0,
+        summary: "Verification unavailable",
+        output: reason.slice(-2_000),
+        fingerprint: fingerprintFailures([], reason),
+        syntaxError: false,
+        infrastructureFailure: true,
+        infrastructureReason: reason,
+        snapshotVerified: false,
+      };
     } finally {
       await rm(snapshotDirectory, { recursive: true, force: true });
     }

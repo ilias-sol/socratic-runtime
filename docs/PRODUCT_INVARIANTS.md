@@ -12,8 +12,10 @@
 - New edits cancel or supersede stale verification and model work.
 - Elapsed time and unchanged code never manufacture evidence of struggle.
 - Passing alternatives are accepted regardless of implementation strategy.
-- Observation mode never claims verification or completion.
+- Guidance-only mode may ask a gated question but can never claim verification or completion.
 - Task text, learner code, verifier output, and model output are untrusted data.
+- Framework detection only proposes bounded presets; the exact generated verifier still requires explicit approval.
+- Disposable-project verification replaces only the copied target and never writes the learner workspace.
 - Verified mode requires workspace trust and approval of the exact verifier configuration.
 - Silent decisions do not notify or interrupt the learner.
 - Attention cues decorate existing text temporarily and never edit it.

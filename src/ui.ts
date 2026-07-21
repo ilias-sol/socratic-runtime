@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
+import { assessmentStatusCopy } from "./guidance.js";
 import { isHelpAction, type HelpAction } from "./helpActions.js";
 import type { SessionState } from "./types.js";
+
+export interface SetupDoctorCheck {
+  label: string;
+  status: "ready" | "warning" | "blocked";
+  detail: string;
+}
 
 function escapeHtml(value: string): string {
   return value.replace(
@@ -41,7 +48,8 @@ export class SocraticHelpView
   private view: vscode.WebviewView | null = null;
   private html = page(
     "Socratic Runtime",
-    '<p class="muted">Start a session to watch verified revisions. Silence means there is nothing useful to add.</p>',
+    '<p class="muted">Start a session to review revisions. Verified mode runs approved tests; Guidance-only mode never claims correctness.</p><div class="actions"><button data-action="rerunSetupDoctor">Run Setup Doctor</button></div>',
+    true,
   );
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -80,11 +88,11 @@ export class SocraticHelpView
     );
   }
 
-  showAssessing(): void {
+  showAssessing(guidanceOnly = false): void {
     this.update(
       page(
         "Assessing this revision",
-        '<p class="muted">Executable checks found a failure. GPT-5.6 is comparing the target with the previous verified attempt. Editing again cancels this assessment.</p>',
+        `<p class="muted">${escapeHtml(assessmentStatusCopy(guidanceOnly))}</p>`,
       ),
     );
   }
@@ -93,17 +101,38 @@ export class SocraticHelpView
     this.update(
       page(
         "Socratic Runtime",
-        '<p class="muted">Start a session to watch verified revisions. Silence means there is nothing useful to add.</p>',
+        '<p class="muted">Start a session to review revisions. Verified mode runs approved tests; Guidance-only mode never claims correctness.</p><div class="actions"><button data-action="rerunSetupDoctor">Run Setup Doctor</button></div>',
+        true,
       ),
     );
   }
 
-  showObservation(): void {
+  showGuidanceOnly(reason: string): void {
     this.update(
       page(
-        "Observation only",
-        '<p class="muted">The active task binding changed, so trusted verification and completion claims are disabled. Start a new session after restoring the task.</p>',
+        "Guidance only",
+        `<div class="card"><p>${escapeHtml(reason)}</p></div><p class="muted">GPT-5.6 may compare revisions and ask a minimal question, but executable correctness and completion claims remain disabled.</p>`,
       ),
+    );
+  }
+
+  showSetupDoctor(checks: SetupDoctorCheck[], presetCount: number): void {
+    const icon = { ready: "✓", warning: "!", blocked: "×" } as const;
+    const ready = checks.every((check) => check.status === "ready");
+    this.update(
+      page(
+        "Setup Doctor",
+        `<p class="muted">Checks the local VS Code, Codex, task, and verifier path. No new account or API key is required.</p><div class="card">${checks
+          .map(
+            (check) =>
+              `<div class="metric"><span><strong>${icon[check.status]} ${escapeHtml(check.label)}</strong><br><span class="muted">${escapeHtml(check.detail)}</span></span><strong>${check.status === "ready" ? "Ready" : check.status === "warning" ? "Review" : "Blocked"}</strong></div>`,
+          )
+          .join(
+            "",
+          )}</div><p><strong>${ready ? "Ready to start a verified session." : "Setup needs attention."}</strong></p><div class="actions">${presetCount > 0 ? '<button data-action="configurePreset">Configure detected verifier</button>' : ""}<button class="secondary" data-action="rerunSetupDoctor">Run checks again</button></div>`,
+        true,
+      ),
+      true,
     );
   }
 
@@ -220,7 +249,7 @@ export function formatTrace(state: SessionState): string {
   });
   return [
     `Socratic Runtime decision trace — ${state.sessionId}`,
-    `Mode: ${state.mode} · Provider: ${state.providerMode}`,
+    `Mode: ${state.mode === "guidance" ? "guidance-only" : state.mode} · Provider: ${state.providerMode}`,
     `Target: ${state.targetSymbol.name} (${state.targetSymbol.file}:${state.targetSymbol.line + 1})`,
     "",
     ...lines,
