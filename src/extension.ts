@@ -19,7 +19,7 @@ import {
   type FrameworkPreset,
 } from "./frameworkPresets.js";
 import { guidanceResult } from "./guidance.js";
-import type { HelpAction } from "./helpActions.js";
+import { availableNudgeSupportCount, type HelpAction } from "./helpActions.js";
 import {
   event,
   gateModelDecision,
@@ -186,11 +186,21 @@ class SocraticRuntime implements vscode.Disposable {
   }
 
   private showWatchingView(hintsPaused = false): void {
+    const supportCount = availableNudgeSupportCount({
+      hintsPaused,
+      hasFailedAssessment: Boolean(
+        this.state?.latestVerification && !this.state.latestVerification.passed,
+      ),
+      verifiedComplete: this.state?.phase === "verified_complete",
+      supportCount: this.state?.episodeSupportCount ?? 0,
+      maximumSupports: MAX_SUPPORTS_PER_EPISODE,
+    });
     if (this.state?.mode === "guidance")
       this.helpView.showGuidanceOnly(
         "No matching approved verifier is configured for this task.",
+        supportCount,
       );
-    else this.helpView.showWatching(hintsPaused);
+    else this.helpView.showWatching(hintsPaused, supportCount);
   }
 
   private startAutoChecks(): void {
@@ -1178,6 +1188,7 @@ class SocraticRuntime implements vscode.Disposable {
             ? "Socratic: Sign-in Required"
             : this.watchingStatus(),
         );
+        this.showWatchingView(this.hintsPaused);
         return;
       }
 
@@ -1233,13 +1244,13 @@ class SocraticRuntime implements vscode.Disposable {
       state.latestVerification.passed
     ) {
       void vscode.window.showInformationMessage(
-        "Run a revision check before requesting another nudge.",
+        "Run a revision check before requesting a nudge.",
       );
       return;
     }
     if (this.hintsPaused) {
       void vscode.window.showInformationMessage(
-        "Resume Socratic questions before requesting another nudge.",
+        "Resume Socratic questions before requesting a nudge.",
       );
       return;
     }
@@ -1273,14 +1284,14 @@ class SocraticRuntime implements vscode.Disposable {
     const reduced = reduceVerification(state, result, currentCode);
     this.supportRequestInFlight = true;
     this.appendEvent(
-      event("support_requested", "Learner explicitly requested another nudge", {
+      event("support_requested", "Learner explicitly requested a nudge", {
         supportLevel: state.episodeSupportCount + 1,
       }),
     );
     this.cancelModelAssessment();
     const assessmentAbort = new AbortController();
     this.activeModelAbort = assessmentAbort;
-    this.setStatus("Socratic: Preparing Another Nudge");
+    this.setStatus("Socratic: Preparing Nudge");
     this.helpView.showAssessing(state.mode === "guidance");
     try {
       const providerResult = await this.providerForState().analyze(
@@ -1335,7 +1346,7 @@ class SocraticRuntime implements vscode.Disposable {
         this.setStatus(this.watchingStatus());
         this.showWatchingView(false);
         void vscode.window.showInformationMessage(
-          "No additional nudge passed the safety and confidence checks for this revision.",
+          "No nudge passed the safety and confidence checks for this revision.",
         );
         return;
       }
@@ -1358,7 +1369,7 @@ class SocraticRuntime implements vscode.Disposable {
           latencyMs: providerResult.latencyMs,
         }),
       );
-      this.setStatus("Socratic: Another Nudge Available", gate.visibleText);
+      this.setStatus("Socratic: Nudge Available", gate.visibleText);
       this.showQuestionCue(gate.visibleText, document);
     } finally {
       if (this.activeModelAbort === assessmentAbort)
@@ -1488,7 +1499,7 @@ class SocraticRuntime implements vscode.Disposable {
             "ask_invariant",
           ],
       policyConstraints: [
-        "silence by default",
+        "preserve silence while self-correction, progress, or experimentation remains plausible; when the trajectory establishes stalled with no meaningful progress, select the smallest safe question",
         "no code",
         "no file edits",
         "no hidden-test disclosure",
@@ -1500,7 +1511,7 @@ class SocraticRuntime implements vscode.Disposable {
           : "executable verification alone establishes correctness and completion",
         explicitHelpRequested
           ? "the learner explicitly requested one additional nudge"
-          : "additional support requires an explicit learner request",
+          : "the learner has not explicitly requested help; this does not block one unsolicited question when the trajectory establishes a stall",
       ],
     };
   }

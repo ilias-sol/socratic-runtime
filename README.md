@@ -20,7 +20,7 @@ The extension never inserts learner code, never treats model confidence as proof
 
 ## Install the packaged extension
 
-1. Download `socratic-runtime-0.2.1.vsix` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
+1. Download `socratic-runtime-0.2.2.vsix` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
 2. In VS Code, run **Extensions: Install from VSIX** and select the downloaded file.
 3. Reload VS Code when prompted.
 
@@ -97,9 +97,9 @@ unsaved target revision
                                        silence or one question
 ```
 
-There is no fixed “third failure” trigger. Progress, experimentation, uncertainty, and plausible alternative strategies normally produce silence. A credible repeated stall may produce one concise question and a temporary editor attention cue.
+There is no fixed “third failure” trigger. Progress, experimentation, uncertainty, and plausible alternative strategies normally produce silence. Once GPT-5.6 establishes a credible stall with no meaningful progress, it selects one concise question and the host applies the safety gate. A contradictory `stalled`-but-silent response is reassessed once rather than silently abandoning the learner.
 
-If the learner remains stuck, **I need another nudge** can request up to two progressively narrower follow-ups. Meaningful progress opens a new struggle episode. Editing cancels stale work, unchanged code is not rechecked, and elapsed time alone never counts as struggle.
+After any assessed failed revision, **Ask for a nudge** remains available even when the automatic decision is silence. After the first question, **I need another nudge** can request progressively narrower follow-ups. Each struggle episode allows at most three total support steps. Meaningful progress opens a new episode. Editing cancels stale work, unchanged code is not rechecked, and elapsed time alone never counts as struggle.
 
 ## How an exercise declares the task
 
@@ -138,7 +138,7 @@ The recommended judge bundle contains the packaged extension, binary-search work
    powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
    ```
 
-3. Install the included `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
+3. Install the included `socratic-runtime-0.2.2.vsix` with **Extensions: Install from VSIX**.
 4. Open `binary-search-demo` in VS Code, trust the workspace, and open `binary_search.py`.
 5. Run **Socratic Runtime: Start Session**, review the exact verifier command, and approve it.
 6. Copy the numbered files in `demo-states` into `binary_search.py` in sequence to exercise first failure, progress, repeated struggle, and verified completion.
@@ -178,7 +178,7 @@ See [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) for the exact bo
 
 ## Verification
 
-`npm run verify` covers formatting, linting, types, 121 automated TypeScript tests including a production-state learner journey and disposable-project execution, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, VSIX creation, and the one-download judge bundle.
+`npm run verify` covers formatting, linting, types, 127 automated TypeScript tests including novice syntax stalls, provider consistency retry, first-nudge availability, a production-state learner journey, and disposable-project execution; 21 synthetic traces; four Python exercise families; nine accepted strategies; four rejected defects; timing simulations; Extension Host activation; package auditing; VSIX creation; and the one-download judge bundle.
 
 These checks verify implementation behavior and release composition; they do not prove tutoring efficacy or human learning outcomes.
 

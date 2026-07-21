@@ -94,6 +94,43 @@ function assess(
 }
 
 describe("production assessment journey", () => {
+  it("intervenes after a beginner's syntax failure becomes a repeated stall", () => {
+    const state = initialState();
+    const syntaxFailure = { ...verification("syntax"), syntaxError: true };
+
+    expect(
+      assess(
+        state,
+        syntaxFailure,
+        "def binary_search(",
+        decision({ learnerState: "self_correcting" }),
+      ),
+    ).toMatchObject({ finalAction: "remain_silent" });
+
+    expect(
+      assess(
+        state,
+        syntaxFailure,
+        "def binary_search(values",
+        decision({
+          learnerState: "stalled",
+          progressAssessment: "none",
+          decision: "direct_attention",
+          studentVisibleText:
+            "What part of the function header does Python still expect before it can run any checks?",
+          alternativeStrategyProbability: 0.05,
+        }),
+      ),
+    ).toMatchObject({
+      assessmentEventType: "equivalent_failure",
+      finalAction: "intervene",
+    });
+    expect(state).toMatchObject({
+      interventionsShown: 1,
+      episodeSupportCount: 1,
+    });
+  });
+
   it("keeps guidance-only reviews distinct from executable failures", () => {
     const state = { ...initialState(), mode: "guidance" as const };
     const result = { ...verification("guidance"), snapshotVerified: false };

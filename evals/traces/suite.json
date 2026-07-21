@@ -85,6 +85,23 @@
     "expected": { "finalAction": "remain_silent", "modelCalls": 1 }
   },
   {
+    "id": "persistent-syntax-stall",
+    "revisions": [
+      {
+        "code": "def binary_search(",
+        "fingerprint": "syntax",
+        "syntaxError": true
+      },
+      {
+        "code": "def binary_search(values",
+        "fingerprint": "syntax",
+        "syntaxError": true
+      }
+    ],
+    "tags": { "interventionRequired": true },
+    "expected": { "finalAction": "intervene", "modelCalls": 2 }
+  },
+  {
     "id": "leaking-output",
     "revisions": [
       { "code": "def binary_search():\n    return -1", "fingerprint": "a" },

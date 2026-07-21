@@ -2,7 +2,7 @@
   "name": "socratic-runtime",
   "displayName": "Socratic Runtime",
   "description": "A GPT-5.6 Socratic IDE tutor that evaluates learner progress before intervening.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "socratic-runtime",
   "license": "MIT",
   "repository": {

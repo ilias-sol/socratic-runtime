@@ -46,6 +46,18 @@ const allowedModelDecisionKeys = new Set([
 
 export const LIVE_MODEL_REASONING_EFFORT = "medium";
 
+export function requiresStallConsistencyRetry(
+  packet: LearningStatePacket,
+  decision: ModelDecision,
+): boolean {
+  return (
+    decision.learnerState === "stalled" &&
+    decision.progressAssessment === "none" &&
+    decision.decision === "remain_silent" &&
+    (packet.previousVerification !== null || packet.state.explicitHelpRequested)
+  );
+}
+
 /** Keep secrets out of any command the model may inspect while preserving CLI auth discovery. */
 export function codexEnvironment(
   environment: NodeJS.ProcessEnv,
@@ -230,13 +242,15 @@ export class CodexCliProvider implements PedagogicalModelProvider {
       "You are the primary learner-state evaluator. Compare the previous and current attempts and verification evidence across any programming language.",
       "Decide whether the learner is making meaningful progress, experimenting, self-correcting, stalled, or uncertain; then decide whether to remain silent or intervene.",
       "Output must be internally consistent: self_correcting, progressing, experimenting, uncertain, or meaningful progress requires remain_silent. Only a stalled state with no meaningful progress may choose a non-silent action.",
+      "A first failure normally preserves self-correction time. A first syntax or collection error normally remains silent because it does not by itself establish a conceptual stall.",
+      "When the observed trajectory provides enough evidence for you to classify the learner as stalled with no meaningful progress, choose the smallest permitted non-silent action. Do not remain silent merely because explicit help was not requested; explicitHelpRequested distinguishes learner-invoked support from the one permitted unsolicited question.",
       "Executable verification is authoritative for correctness. Do not let a local heuristic make the pedagogical decision for you.",
       "When packet.verification.snapshotVerified is false, the session is guidance-only: compare revisions conservatively, never imply that tests failed or passed, and never claim correctness or completion.",
       "Return only the smallest permitted pedagogical action. Prefer silence when productive struggle is plausible. Never provide code or hidden-test details.",
       "When packet.state.explicitHelpRequested is true, the learner has explicitly asked for one more nudge. Use only packet.permittedActions and make the next question incrementally more concrete without giving a mechanical recipe.",
       JSON.stringify(packet),
     ].join("\n\n");
-    const args = [
+    const argsFor = (promptText: string): string[] => [
       "exec",
       "--skip-git-repo-check",
       "--ephemeral",
@@ -250,71 +264,74 @@ export class CodexCliProvider implements PedagogicalModelProvider {
       schemaPath,
       "--output-last-message",
       outputPath,
-      prompt,
+      promptText,
     ];
+
+    const runCodex = async (
+      promptText: string,
+    ): Promise<{ code: number | null; error: string }> =>
+      await new Promise((resolve) => {
+        let error = "";
+        let settled = false;
+        let cancelled = false;
+        const child = spawn(
+          this.codexPath,
+          [...this.codexArgsPrefix, ...argsFor(promptText)],
+          {
+            // Codex sees only the staged policy and the explicit packet. The
+            // learner workspace is deliberately outside its readable root.
+            cwd: tempRoot,
+            shell: false,
+            windowsHide: true,
+            env: codexEnvironment(process.env),
+          },
+        );
+        const appendOutput = (chunk: Buffer): void => {
+          error = appendBoundedTail(error, chunk.toString("utf8"));
+        };
+        child.stdout.on("data", appendOutput);
+        child.stderr.on("data", appendOutput);
+        child.stdin.end();
+        const finish = (code: number | null, detail = error): void => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          options.signal?.removeEventListener("abort", abort);
+          resolve({ code, error: detail });
+        };
+        const abort = (): void => {
+          cancelled = true;
+          error += "\nSocratic assessment cancelled";
+          terminateProcessTree(child);
+          setTimeout(() => finish(null), 1_000).unref();
+        };
+        child.on("error", (spawnError) => finish(null, spawnError.message));
+        child.on("close", (code) => finish(code));
+        options.signal?.addEventListener("abort", abort, { once: true });
+        if (options.signal?.aborted) abort();
+        const timer = setTimeout(() => {
+          error += "\nCodex provider timed out";
+          terminateProcessTree(child);
+          setTimeout(() => finish(null), 1_000).unref();
+        }, options.timeoutMs);
+        timer.unref();
+        if (cancelled) terminateProcessTree(child);
+      });
+
+    const failureReason = (error: string): string =>
+      /assessment cancelled/i.test(error)
+        ? "assessment_cancelled"
+        : /login|auth|sign.?in|401/i.test(error)
+          ? "authentication_required"
+          : /model|unavailable|not found/i.test(error)
+            ? "model_unavailable"
+            : "provider_failed";
 
     try {
       await fs.cp(this.skillSourcePath, skillPath, { recursive: true });
-      const run = await new Promise<{ code: number | null; error: string }>(
-        (resolve) => {
-          let error = "";
-          let settled = false;
-          let cancelled = false;
-          const child = spawn(
-            this.codexPath,
-            [...this.codexArgsPrefix, ...args],
-            {
-              // Codex sees only the staged policy and the explicit packet. The
-              // learner workspace is deliberately outside its readable root.
-              cwd: tempRoot,
-              shell: false,
-              windowsHide: true,
-              env: codexEnvironment(process.env),
-            },
-          );
-          const appendOutput = (chunk: Buffer): void => {
-            error = appendBoundedTail(error, chunk.toString("utf8"));
-          };
-          child.stdout.on("data", appendOutput);
-          child.stderr.on("data", appendOutput);
-          // `codex exec` treats an open piped stdin as additional prompt input,
-          // even when the prompt is already supplied as a positional argument.
-          // Close the unused pipe so the CLI can begin the request immediately.
-          child.stdin.end();
-          const finish = (code: number | null, detail = error): void => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            options.signal?.removeEventListener("abort", abort);
-            resolve({ code, error: detail });
-          };
-          const abort = (): void => {
-            cancelled = true;
-            error += "\nSocratic assessment cancelled";
-            terminateProcessTree(child);
-            setTimeout(() => finish(null), 1_000).unref();
-          };
-          child.on("error", (spawnError) => finish(null, spawnError.message));
-          child.on("close", (code) => finish(code));
-          options.signal?.addEventListener("abort", abort, { once: true });
-          if (options.signal?.aborted) abort();
-          const timer = setTimeout(() => {
-            error += "\nCodex provider timed out";
-            terminateProcessTree(child);
-            setTimeout(() => finish(null), 1_000).unref();
-          }, options.timeoutMs);
-          timer.unref();
-          if (cancelled) terminateProcessTree(child);
-        },
-      );
+      let run = await runCodex(prompt);
       if (run.code !== 0) {
-        const reason = /assessment cancelled/i.test(run.error)
-          ? "assessment_cancelled"
-          : /login|auth|sign.?in|401/i.test(run.error)
-            ? "authentication_required"
-            : /model|unavailable|not found/i.test(run.error)
-              ? "model_unavailable"
-              : "provider_failed";
+        const reason = failureReason(run.error);
         return {
           provider: "codex-cli",
           model,
@@ -327,11 +344,39 @@ export class CodexCliProvider implements PedagogicalModelProvider {
       if (outputStat.size > 64_000)
         throw new Error("Codex provider output exceeded 64000 bytes");
       const raw = await fs.readFile(outputPath, "utf8");
+      let decision = validateModelDecision(JSON.parse(raw) as unknown);
+      if (requiresStallConsistencyRetry(packet, decision)) {
+        await fs.rm(outputPath, { force: true });
+        run = await runCodex(
+          [
+            prompt,
+            "Your previous response classified the learner as stalled with no meaningful progress but selected remain_silent. That pairing contradicts the intervention contract once prior evidence exists. Reassess the packet and return one internally consistent decision: either a productive or uncertain state with silence, or stalled with the smallest permitted non-silent question.",
+          ].join("\n\n"),
+        );
+        if (run.code !== 0) {
+          const reason = failureReason(run.error);
+          return {
+            provider: "codex-cli",
+            model,
+            latencyMs: Date.now() - started,
+            fallbackReason: reason,
+            decision: silentDecision(reason),
+          };
+        }
+        const retryStat = await fs.stat(outputPath);
+        if (retryStat.size > 64_000)
+          throw new Error("Codex provider output exceeded 64000 bytes");
+        decision = validateModelDecision(
+          JSON.parse(await fs.readFile(outputPath, "utf8")) as unknown,
+        );
+        if (requiresStallConsistencyRetry(packet, decision))
+          throw new Error("inconsistent stalled model decision");
+      }
       return {
         provider: "codex-cli",
         model,
         latencyMs: Date.now() - started,
-        decision: validateModelDecision(JSON.parse(raw) as unknown),
+        decision,
       };
     } catch (error) {
       return {

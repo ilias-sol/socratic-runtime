@@ -12,11 +12,11 @@ The recommended artifact is `socratic-runtime-judge-bundle.zip`. It contains the
    powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
    ```
 
-4. Install the included `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
+4. Install the included `socratic-runtime-0.2.2.vsix` with **Extensions: Install from VSIX**.
 5. Open `binary-search-demo`, trust the workspace, and open `binary_search.py`. This is the learner's working file, not a reference answer.
 6. Run **Socratic Runtime: Start Session**.
 7. Review and approve the exact verifier command.
-8. Use the numbered files in `demo-states` as successive learner revisions.
+8. Use the numbered files in `demo-states` as successive learner revisions. After any assessed failure, **Ask for a nudge** remains available even when GPT-5.6 preserves self-correction time.
 9. Inspect **Decision Trace** after each check.
 
 ## Fresh-project path
@@ -31,4 +31,4 @@ The trace records objective verification, GPT-5.6 learner state and progress, mo
 
 Pedagogical decisions are live model outputs, so exact wording is not guaranteed. Executable checks—not GPT confidence—establish completion. If Codex is unavailable, the extension reports **Sign-in Required** and does not substitute a recorded response.
 
-Repository verification includes 20 replay cases, 121 TypeScript tests including a production-state learner journey and ordinary-test disposable-copy execution, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 12 registered commands.
+Repository verification includes 21 replay cases, 127 TypeScript tests including persistent-syntax, provider-consistency, first-nudge, production-state learner journeys, ordinary-test disposable-copy execution, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 12 registered commands. The live probe additionally runs a novice sequence through real pytest evidence and GPT-5.6.

@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 import { assessmentStatusCopy } from "./guidance.js";
-import { isHelpAction, type HelpAction } from "./helpActions.js";
+import {
+  isHelpAction,
+  nudgeActionLabel,
+  type HelpAction,
+} from "./helpActions.js";
 import type { SessionState } from "./types.js";
 
 export interface SetupDoctorCheck {
@@ -76,14 +80,18 @@ export class SocraticHelpView
     }
   }
 
-  showWatching(hintsPaused = false): void {
+  showWatching(hintsPaused = false, supportCount: number | null = null): void {
+    const nudgeAction =
+      supportCount === null
+        ? ""
+        : `<div class="actions"><button data-action="moreHelp">${escapeHtml(nudgeActionLabel(supportCount))}</button></div>`;
     this.update(
       page(
         hintsPaused ? "Hints paused" : "Watching quietly",
         hintsPaused
           ? '<p>Verification continues, but Socratic questions are paused.</p><div class="actions"><button data-action="resumeHints">Resume hints</button></div>'
-          : '<p class="muted">New revisions are checked after you pause typing. You will only be notified when a minimal question is justified.</p>',
-        hintsPaused,
+          : `<p class="muted">New revisions are checked after you pause typing. You will only be notified when a minimal question is justified.</p>${nudgeAction}`,
+        hintsPaused || supportCount !== null,
       ),
     );
   }
@@ -107,11 +115,16 @@ export class SocraticHelpView
     );
   }
 
-  showGuidanceOnly(reason: string): void {
+  showGuidanceOnly(reason: string, supportCount: number | null = null): void {
+    const nudgeAction =
+      supportCount === null
+        ? ""
+        : `<div class="actions"><button data-action="moreHelp">${escapeHtml(nudgeActionLabel(supportCount))}</button></div>`;
     this.update(
       page(
         "Guidance only",
-        `<div class="card"><p>${escapeHtml(reason)}</p></div><p class="muted">GPT-5.6 may compare revisions and ask a minimal question, but executable correctness and completion claims remain disabled.</p>`,
+        `<div class="card"><p>${escapeHtml(reason)}</p></div><p class="muted">GPT-5.6 may compare revisions and ask a minimal question, but executable correctness and completion claims remain disabled.</p>${nudgeAction}`,
+        supportCount !== null,
       ),
     );
   }

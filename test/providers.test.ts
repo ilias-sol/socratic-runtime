@@ -6,9 +6,10 @@ import {
   CodexCliProvider,
   codexEnvironment,
   LIVE_MODEL_REASONING_EFFORT,
+  requiresStallConsistencyRetry,
   validateModelDecision,
 } from "../src/providers.js";
-import type { LearningStatePacket } from "../src/types.js";
+import type { LearningStatePacket, ModelDecision } from "../src/types.js";
 
 const packet = {
   language: "java",
@@ -51,7 +52,7 @@ const packet = {
   policyConstraints: ["no code"],
 } satisfies LearningStatePacket;
 
-const validDecision = {
+const validDecision: ModelDecision = {
   learnerState: "stalled",
   progressAssessment: "none",
   decision: "remain_silent",
@@ -61,7 +62,7 @@ const validDecision = {
   solutionLeakageRisk: 0,
   reasonCodes: ["safe"],
   reevaluateAfter: "next_check",
-} as const;
+};
 
 describe("live Codex provider", () => {
   it("pins medium reasoning for every invocation", () => {
@@ -87,6 +88,16 @@ describe("live Codex provider", () => {
     expect(() =>
       validateModelDecision({ ...validDecision, learnerState: undefined }),
     ).toThrow(/learner state/);
+  });
+
+  it("detects contradictory silence after a model-declared repeated stall", () => {
+    expect(
+      requiresStallConsistencyRetry(
+        { ...packet, previousVerification: packet.verification },
+        validDecision,
+      ),
+    ).toBe(true);
+    expect(requiresStallConsistencyRetry(packet, validDecision)).toBe(false);
   });
 
   it("rejects malformed or expanded model output", () => {
@@ -123,6 +134,35 @@ describe("live Codex provider", () => {
         model: "gpt-5.6-luna",
         decision: { learnerState: "stalled", decision: "ask_invariant" },
       });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it("retries a contradictory stalled-and-silent decision once", async () => {
+    const workspace = await mkdtemp(
+      path.join(tmpdir(), "socratic-provider-retry-test-"),
+    );
+    const fixture = path.resolve("test", "fixtures", "inconsistent-codex.mjs");
+    const skill = path.resolve(".agents", "skills", "socratic-runtime");
+    try {
+      const result = await new CodexCliProvider(
+        workspace,
+        process.execPath,
+        [fixture],
+        skill,
+      ).analyze(
+        { ...packet, previousVerification: packet.verification },
+        { mode: "luna", timeoutMs: 2_000 },
+      );
+      expect(result).toMatchObject({
+        decision: {
+          learnerState: "stalled",
+          decision: "direct_attention",
+          reasonCodes: ["consistency_retry"],
+        },
+      });
+      expect(result).not.toHaveProperty("fallbackReason");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

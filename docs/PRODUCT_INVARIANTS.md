@@ -7,6 +7,7 @@
 - The extension never writes learner code or supplies replacement code during an exercise.
 - A learner-visible intervention is one concise question of at most 180 characters.
 - At most one unsolicited question is shown in a struggle episode; the learner may explicitly request up to two additional gated nudges. Meaningful progress opens a new episode.
+- A learner can explicitly request the first nudge after any assessed failed revision; the control does not depend on an automatic question appearing first.
 - Low confidence, plausible alternative strategies, leakage risk, malformed output, or provider failure produce silence.
 - Every target revision is checked at most once from an isolated unsaved snapshot.
 - New edits cancel or supersede stale verification and model work.

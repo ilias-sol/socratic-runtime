@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { gateModelDecision, reduceVerification } from "./policy.js";
+import { applyAssessmentTransition } from "./assessmentTransition.js";
 import {
   abstractVerificationResult,
   modelVerificationResult,
@@ -127,6 +128,9 @@ async function main(): Promise<void> {
   const workspace = path.join(root, "sample-workspace", "binary-search");
   const python = path.join(workspace, ".venv", "Scripts", "python.exe");
   const revisions = [
+    "beginner-syntax-1.py",
+    "beginner-syntax-2.py",
+    "beginner-stub.py",
     "first-failure.py",
     "progress.py",
     "repeated-stall.py",
@@ -219,24 +223,14 @@ async function main(): Promise<void> {
       timeoutMs: 60_000,
     });
     const gate = gateModelDecision(state, providerResult.decision, evidence);
-    state.modelAssessmentCount += 1;
-    state.latestVerification = result;
-    state.lastCode = code;
-    state.alternativeStrategyProbability =
-      providerResult.decision.alternativeStrategyProbability;
-    if (providerResult.decision.progressAssessment === "meaningful")
-      state.semanticProgressScore += 1;
-    if (providerResult.decision.progressAssessment === "meaningful") {
-      state.struggleEpisode += 1;
-      state.episodeHasIntervention = false;
-      state.episodeSupportCount = 0;
-    }
-    if (gate.permitted && gate.action !== "remain_silent") {
-      state.interventionsShown += 1;
-      state.lastInterventionCheck = state.checkCount;
-      state.episodeHasIntervention = true;
-      state.episodeSupportCount += 1;
-    } else state.silentDecisions += 1;
+    const transition = applyAssessmentTransition(
+      state,
+      result,
+      code,
+      providerResult.decision,
+      evidence,
+      gate,
+    );
     observations.push({
       revision: name,
       verification: result.summary,
@@ -248,7 +242,7 @@ async function main(): Promise<void> {
       modelAction: providerResult.decision.decision,
       studentVisibleText: gate.visibleText,
       safetyDecision: gate.reason,
-      finalAction: gate.visibleText ? "intervene" : "remain_silent",
+      finalAction: transition.finalAction,
     });
   }
 
@@ -266,6 +260,18 @@ async function main(): Promise<void> {
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report, null, 2));
+
+  const completed = observations.at(-1)?.finalAction === "complete";
+  const intervened = observations.some(
+    (observation) => observation.finalAction === "intervene",
+  );
+  const preservedFirstAttempt =
+    observations.at(0)?.finalAction === "remain_silent";
+  if (!completed || !intervened || !preservedFirstAttempt) {
+    throw new Error(
+      `Beginner simulation contract failed: completed=${completed}, intervened=${intervened}, preservedFirstAttempt=${preservedFirstAttempt}`,
+    );
+  }
 }
 
 void main();
