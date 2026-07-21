@@ -63,7 +63,11 @@ No language-specific setup, test suite, hidden configuration, or project registr
 - **Reflective after the task:** only after Luna considers the task complete does the session end and reveal a reference approach.
 - **Learner-controlled:** pause, end, or request a nudge at any time. The extension never edits the learner's file.
 
-The product hypothesis is informed by learning-science and neuroscience concepts including active retrieval, productive struggle, feedback timing, and cognitive control. This prototype translates those established ideas into an IDE interaction; it does not claim to have proven an educational or neuroscientific effect.
+## My hypothesis
+
+My hypothesis is that students learn programming more effectively when they have space to struggle productively—to retrieve knowledge, generate an approach, notice mistakes, and revise their reasoning—before receiving help. It is informed by established learning-science and neuroscience concepts around active retrieval, productive struggle, feedback timing, and cognitive control.
+
+Socratic Runtime translates that hypothesis into an IDE interaction: Luna stays silent while independent progress appears plausible and asks one focused question when the learner seems genuinely stuck. The goal is not to withhold help, but to provide the smallest intervention that restores productive thinking. This prototype does not claim to have experimentally proven an educational or neuroscientific effect.
 
 ## Runtime boundary
 
