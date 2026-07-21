@@ -33,4 +33,4 @@ The trace records objective verification, GPT-5.6 learner state and progress, mo
 
 Pedagogical decisions are live model outputs, so exact wording is not guaranteed. Executable checks—not GPT confidence—establish completion. If Codex is unavailable, the extension reports **Sign-in Required** and does not substitute a recorded response.
 
-Repository verification includes 20 replay cases, 120 TypeScript tests including a production-state learner journey and ordinary-test disposable-copy execution, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 12 registered commands.
+Repository verification includes 20 replay cases, 121 TypeScript tests including a production-state learner journey and ordinary-test disposable-copy execution, four Python exercise families, nine accepted strategies, four rejected defects, and an Extension Host smoke test with 12 registered commands.
