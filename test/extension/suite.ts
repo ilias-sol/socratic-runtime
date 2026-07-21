@@ -8,23 +8,18 @@ export async function run(): Promise<void> {
   assert.ok(extension, "extension is installed in the development host");
   await extension.activate();
   const commands = await vscode.commands.getCommands(true);
-  for (const command of [
+  const expected = [
     "socraticRuntime.startSession",
-    "socraticRuntime.runCheck",
-    "socraticRuntime.useSelectionAsTask",
-    "socraticRuntime.copySelectionAsTaskMarker",
-    "socraticRuntime.runSetupDoctor",
-    "socraticRuntime.openDecisionTrace",
-    "socraticRuntime.openPolicyComparison",
-    "socraticRuntime.resetDemo",
+    "socraticRuntime.askForNudge",
+    "socraticRuntime.pause",
+    "socraticRuntime.resume",
     "socraticRuntime.endSession",
-    "socraticRuntime.pauseWatching",
-    "socraticRuntime.resumeWatching",
-    "socraticRuntime.openHelp",
-  ]) {
+    "socraticRuntime.openSupport",
+    "socraticRuntime.openDecisionTrace",
+  ];
+  for (const command of expected)
     assert.ok(commands.includes(command), `${command} is registered`);
-  }
   console.log(
-    "Socratic Runtime extension-host smoke test passed: extension activated and 12 commands registered.",
+    `Socratic Runtime extension-host smoke test passed: extension activated and ${expected.length} commands registered.`,
   );
 }

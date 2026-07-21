@@ -1,7 +1,7 @@
-# Leakage policy
+# Active-session leakage policy
 
-Learner-visible text must be one concise question of at most 180 characters.
+Student-visible text must be one concise question of at most 220 characters.
 
-Reject fenced or inline replacement code; function, class, loop, conditional, assignment, or return statements; hidden inputs or expected outputs; reference implementations; mechanical solution recipes; Markdown links or URLs; Unicode/HTML-obfuscated code; and claims that the learner understood or learned.
+Reject replacement code, fenced or inline code, assignments, return statements, mechanical recipes, ordered edit sequences, hidden inputs or outputs, links, and claims that the learner understood something.
 
-Prefer conceptual nouns already present in the task: interval, candidate, branch, prediction, observation. A local deterministic filter has final authority.
+Prefer conceptual language already present in the task. A full reference implementation is permitted only in the separate post-completion generation step after observation has ended.

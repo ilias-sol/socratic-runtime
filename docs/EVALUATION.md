@@ -1,17 +1,7 @@
 # Evaluation
 
-## What is exercised
+Offline verification covers task extraction across comment styles, meaningful-revision detection, active-session leakage rejection, strict model schemas, reduced environment handling, process output bounds, the pinned Luna medium configuration, all extension commands, packaging, and VSIX content auditing.
 
-`npm run test:evals` replays 21 deterministic synthetic revision traces through the production evidence collector, scripted GPT-shaped decisions, strict schema validator, and safety gate.
+`npm run test:live` separately sends a six-revision beginner trajectory to the authenticated GPT-5.6 Luna medium model. It requires the resulting journey to include silence, at least one question, completion, and post-completion reference code. No local Python tests or recorded tutoring responses are used.
 
-The suite covers first failures, progress, experimentation, equivalent failures, alternative strategies, executable completion, malformed output, provider failure, authentication failure, leakage attempts, confidence thresholds, alternative-strategy uncertainty, question shape, cooldown, and intervention episodes.
-
-`npm run test:python` verifies four exercise families, accepts nine structurally valid strategies, and rejects four targeted defects.
-
-The TypeScript suite contains 127 tests across 19 files, including persistent novice syntax stalls, stalled-and-silent consistency retry, first-nudge availability, framework detection, generated configuration, task-marker formatting, Guidance-only non-completion, bounded disposable copies, secret/cache exclusion, and an ordinary Node test suite executing successfully against the copied unsaved target while the original source remains unchanged. `npm run test:extension` activates the production bundle in an isolated Extension Host and confirms 12 registered commands.
-
-## What this evidence establishes
-
-The automated suites establish deterministic host behavior, executable exercise coverage, extension activation, and packaging integrity. Scripted decisions are fixtures only; the production runtime uses live GPT-5.6.
-
-They do not establish live-model quality, usability, retention, transfer, or improved human learning outcomes. Those claims require separate learner evaluation.
+This demonstrates the product loop, not educational efficacy. Evidence that the intervention improves learning would require a preregistered study comparing conditions and measuring retention or transfer.

@@ -2,16 +2,31 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "learnerState": { "enum": ["self_correcting", "progressing", "experimenting", "stalled", "uncertain"] },
-    "progressAssessment": { "enum": ["meaningful", "unclear", "none"] },
-    "decision": { "enum": ["remain_silent", "ask_prediction", "suggest_experiment", "direct_attention", "ask_invariant", "offer_reflection"] },
-    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-    "studentVisibleText": { "type": ["string", "null"] },
-    "alternativeStrategyProbability": { "type": "number", "minimum": 0, "maximum": 1 },
-    "solutionLeakageRisk": { "type": "number", "minimum": 0, "maximum": 1 },
-    "reasonCodes": { "type": "array", "items": { "type": "string" } },
-    "reevaluateAfter": { "enum": ["next_check", "next_semantic_edit", "completion"] }
+    "learnerState": {
+      "enum": [
+        "self_correcting",
+        "progressing",
+        "experimenting",
+        "stalled",
+        "uncertain",
+        "complete"
+      ]
+    },
+    "action": {
+      "enum": ["remain_silent", "ask_question", "complete"]
+    },
+    "question": { "type": ["string", "null"] },
+    "assessment": { "type": "string" },
+    "trajectorySummary": { "type": "string" },
+    "completionSummary": { "type": ["string", "null"] }
   },
-  "required": ["learnerState", "progressAssessment", "decision", "confidence", "studentVisibleText", "alternativeStrategyProbability", "solutionLeakageRisk", "reasonCodes", "reevaluateAfter"],
+  "required": [
+    "learnerState",
+    "action",
+    "question",
+    "assessment",
+    "trajectorySummary",
+    "completionSummary"
+  ],
   "additionalProperties": false
 }

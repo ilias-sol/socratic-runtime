@@ -1,24 +1,16 @@
 # Product invariants
 
-- GPT-5.6 classifies observable learner state and chooses silence or intervention.
-- Language-specific host heuristics never substitute for the model's pedagogical decision.
-- Executable verification alone establishes correctness and completion.
-- Silence is an explicit action, trace event, and metric.
-- The extension never writes learner code or supplies replacement code during an exercise.
-- A learner-visible intervention is one concise question of at most 180 characters.
-- At most one unsolicited question is shown in a struggle episode; the learner may explicitly request up to two additional gated nudges. Meaningful progress opens a new episode.
-- A learner can explicitly request the first nudge after any assessed failed revision; the control does not depend on an automatic question appearing first.
-- Low confidence, plausible alternative strategies, leakage risk, malformed output, or provider failure produce silence.
-- Every target revision is checked at most once from an isolated unsaved snapshot.
-- New edits cancel or supersede stale verification and model work.
-- Elapsed time and unchanged code never manufacture evidence of struggle.
-- Passing alternatives are accepted regardless of implementation strategy.
-- Guidance-only mode may ask a gated question but can never claim verification or completion.
-- Task text, learner code, verifier output, and model output are untrusted data.
-- Framework detection only proposes bounded presets; the exact generated verifier still requires explicit approval.
-- Disposable-project verification replaces only the copied target and never writes the learner workspace.
-- Verified mode requires workspace trust and approval of the exact verifier configuration.
-- Silent decisions do not notify or interrupt the learner.
-- Attention cues decorate existing text temporarily and never edit it.
-- Reflection and any author-provided reference comparison appear only after executable verification succeeds.
-- The runtime estimates productive struggle from observable behavior; it makes no claim about cognition or learning outcomes.
+1. The product is an ambient learning companion, not a chatbot or answer generator.
+2. One command starts a session on the active text file.
+3. GPT-5.6 Luna with medium reasoning is the only pedagogical model.
+4. Luna sees the task, current and previous code, editor diagnostics, and recent trajectory.
+5. Luna chooses among `remain_silent`, `ask_question`, and `complete`. The host does not impose confidence, failure-count, verifier, or one-question gates.
+6. A meaningful edit is assessed two seconds after typing stops; newer edits cancel stale assessments.
+7. During an active task, an intervention is exactly one concise question—never code, a complete solution, or a mechanical recipe.
+8. **Ask for a Nudge** remains available throughout the session.
+9. A useful question may recur after later progress and a new stall.
+10. When Luna considers the task complete, observation ends automatically and a clearly labeled post-completion reference becomes available.
+11. The extension never edits or executes learner files.
+12. The interaction contract is language-neutral. Python is the demonstration, not a runtime dependency.
+13. Codex CLI reuses the learner's existing ChatGPT/Codex sign-in. No project account or API key is introduced.
+14. Completion is a model assessment, not proof of correctness; the UI and documentation must say so.

@@ -17,20 +17,17 @@ await cp(
   path.join(root, "judge", "START-HERE.md"),
   path.join(bundle, "START-HERE.md"),
 );
+const demoSource = path.join(root, "sample-workspace", "binary-search");
+const demoTarget = path.join(bundle, "binary-search-demo");
+await mkdir(demoTarget, { recursive: true });
 await cp(
-  path.join(root, "judge", "setup-demo.ps1"),
-  path.join(bundle, "setup-demo.ps1"),
+  path.join(demoSource, "binary_search.py"),
+  path.join(demoTarget, "binary_search.py"),
 );
 await cp(
-  path.join(root, "sample-workspace", "binary-search"),
-  path.join(bundle, "binary-search-demo"),
-  {
-    recursive: true,
-    filter: (source) =>
-      !/(?:^|[\\/])(?:\.venv|\.pytest_cache|\.hypothesis|__pycache__)(?:[\\/]|$)/.test(
-        source,
-      ),
-  },
+  path.join(demoSource, "demo-states"),
+  path.join(demoTarget, "demo-states"),
+  { recursive: true },
 );
 
 if (process.platform === "win32")

@@ -2,95 +2,31 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { root, run } from "./lib.mjs";
 
-const read = async (relative) =>
-  await readFile(path.join(root, relative), "utf8");
-const packageJson = JSON.parse(await read("package.json"));
-const traces = JSON.parse(await read("evals/traces/suite.json"));
-const evaluationReport = JSON.parse(
-  await read("artifacts/eval-reports/latest.json"),
+const packageJson = JSON.parse(
+  await readFile(path.join(root, "package.json"), "utf8"),
 );
-const readme = await read("README.md");
-const judgeGuide = await read("docs/JUDGE_GUIDE.md");
-const evaluationGuide = await read("docs/EVALUATION.md");
-const gitignore = await read(".gitignore");
-const demoSettings = JSON.parse(
-  await read("sample-workspace/binary-search/.vscode/settings.json"),
-);
-
-const commandCount = packageJson.contributes?.commands?.length ?? 0;
-const traceCount = traces.length;
 const failures = [];
-const requireClaim = (text, claim, source) => {
-  if (!text.includes(claim)) failures.push(`${source} is missing “${claim}”`);
-};
+const commands = packageJson.contributes?.commands ?? [];
+const settings = packageJson.contributes?.configuration?.properties ?? {};
 
-requireClaim(judgeGuide, `${commandCount} registered commands`, "judge guide");
-requireClaim(readme, `${traceCount} synthetic traces`, "README");
-requireClaim(
-  evaluationGuide,
-  `${traceCount} deterministic synthetic revision traces`,
-  "evaluation guide",
-);
-for (const ignored of [
-  ".tmp-*/",
-  ".vscode-test/",
-  ".pnpm-store/",
-  "**/.pytest_cache/",
-  "**/.hypothesis/",
-  "**/__pycache__/",
-])
-  requireClaim(gitignore, ignored, ".gitignore");
-requireClaim(
-  judgeGuide,
-  `${traceCount} replay cases`,
-  "judge guide trace inventory",
-);
-const configuredAnalysisMode = demoSettings["socraticRuntime.analysisMode"];
-const supportedAnalysisModes =
-  packageJson.contributes?.configuration?.properties?.[
-    "socraticRuntime.analysisMode"
-  ]?.enum ?? [];
+if (packageJson.version !== "0.3.0")
+  failures.push("release version must be 0.3.0");
+if (commands.length !== 7)
+  failures.push(`expected 7 commands, found ${commands.length}`);
+if (settings["socraticRuntime.idleDelayMs"]?.default !== 2_000)
+  failures.push("idle delay must default to 2000 ms");
 if (
-  configuredAnalysisMode !== undefined &&
-  !supportedAnalysisModes.includes(configuredAnalysisMode)
-) {
-  failures.push(
-    `demo workspace configures unsupported analysis mode: ${configuredAnalysisMode}`,
-  );
-}
-if (evaluationReport.socraticRuntime?.traces !== traceCount) {
-  failures.push(
-    `latest evaluation report has ${evaluationReport.socraticRuntime?.traces ?? "no"} traces; expected ${traceCount}`,
-  );
-}
-const expectedGateBlocks = Object.fromEntries(
-  traces
-    .filter((trace) => trace.tags?.gateBlock)
-    .map((trace) => trace.expected?.gateReason)
-    .filter(Boolean)
-    .sort()
-    .map((reason) => [
-      reason,
-      traces.filter(
-        (trace) =>
-          trace.tags?.gateBlock && trace.expected?.gateReason === reason,
-      ).length,
-    ]),
-);
-if (
-  JSON.stringify(evaluationReport.socraticRuntime?.gateBlocksByReason) !==
-  JSON.stringify(expectedGateBlocks)
-) {
-  failures.push("latest evaluation gate-reason counts are stale or invalid");
-}
-if (
-  evaluationReport.socraticRuntime?.adversarialGateOutputsBlocked !==
-  traces.filter((trace) => trace.tags?.gateBlock).length
-) {
-  failures.push(
-    "latest evaluation adversarial-block total is stale or invalid",
-  );
-}
+  Object.keys(settings).some((key) => /verif|analysisMode|autoCheck/i.test(key))
+)
+  failures.push("legacy verifier or policy settings are still exposed");
+
+const provider = await readFile(path.join(root, "src", "providers.ts"), "utf8");
+if (!provider.includes('"gpt-5.6-luna"'))
+  failures.push("Luna model is not pinned");
+if (!provider.includes('"medium"'))
+  failures.push("medium reasoning is not pinned");
+if (/confidenceThreshold|alternativeThreshold|runVerifier/i.test(provider))
+  failures.push("legacy host-side pedagogical gates remain in the provider");
 
 const vsce = await run(
   process.execPath,
@@ -104,38 +40,29 @@ const vsce = await run(
 const packagedFiles = vsce.stdout
   .split(/\r?\n/)
   .map((line) => line.trim().replaceAll("\\", "/"))
-  .filter(Boolean)
-  .sort();
-const expectedFiles = [
+  .filter(Boolean);
+const required = [
   ".agents/skills/socratic-runtime/SKILL.md",
-  ".agents/skills/socratic-runtime/agents/openai.yaml",
-  ".agents/skills/socratic-runtime/references/intervention-policy.md",
-  ".agents/skills/socratic-runtime/references/leakage-policy.md",
-  ".agents/skills/socratic-runtime/references/misconception-library.md",
   ".agents/skills/socratic-runtime/references/output-schema.json",
-  ".agents/skills/socratic-runtime/scripts/check_solution_leakage.py",
-  ".agents/skills/socratic-runtime/scripts/score_intervention.py",
   "LICENSE",
   "README.md",
   "dist/extension.js",
   "media/socratic.svg",
-  "media/socratic-runtime-logo.png",
   "package.json",
-].sort();
-if (JSON.stringify(packagedFiles) !== JSON.stringify(expectedFiles)) {
-  failures.push(`VSIX content drifted: ${packagedFiles.join(", ")}`);
-}
+];
+for (const file of required)
+  if (!packagedFiles.includes(file)) failures.push(`VSIX is missing ${file}`);
 if (
   packagedFiles.some((file) =>
-    /(?:^|\/)(?:\.env|auth\.json|src|test|evals|artifacts)(?:\/|$)/i.test(file),
+    /(?:^|\/)(?:\.env|auth\.json|src|test|evals|artifacts|sample-workspace)(?:\/|$)/i.test(
+      file,
+    ),
   )
-) {
-  failures.push("VSIX contains a private, source, test, or evidence path");
-}
+)
+  failures.push("VSIX contains private, source, test, or demo files");
 
-if (failures.length > 0)
+if (failures.length)
   throw new Error(`Submission audit failed:\n- ${failures.join("\n- ")}`);
-
 console.log(
-  `Submission audit passed: ${commandCount} commands, ${traceCount} traces, ${packagedFiles.length} allowlisted VSIX files.`,
+  `Submission audit passed: one Luna configuration, ${commands.length} commands, ${packagedFiles.length} packaged files.`,
 );

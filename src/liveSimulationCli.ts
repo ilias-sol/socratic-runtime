@@ -1,277 +1,141 @@
-import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { gateModelDecision, reduceVerification } from "./policy.js";
-import { applyAssessmentTransition } from "./assessmentTransition.js";
-import {
-  abstractVerificationResult,
-  modelVerificationResult,
-} from "./privacy.js";
-import { CodexCliProvider } from "./providers.js";
-import type {
-  LearningStatePacket,
-  SessionState,
-  VerificationResult,
-} from "./types.js";
-
-async function runProcess(
-  command: string,
-  args: string[],
-  cwd: string,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<{ code: number | null; output: string }> {
-  return await new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      env,
-      shell: false,
-      windowsHide: true,
-    });
-    let output = "";
-    const append = (chunk: Buffer) => {
-      output = (output + chunk.toString("utf8")).slice(-32_000);
-    };
-    child.stdout.on("data", append);
-    child.stderr.on("data", append);
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ code, output }));
-  });
-}
-
-function verificationFrom(
-  output: string,
-  code: number | null,
-): VerificationResult {
-  const passed = code === 0;
-  const passedCount = Number(
-    output
-      .match(/(\d+) passed/g)
-      ?.at(-1)
-      ?.match(/\d+/)?.[0] ?? 0,
-  );
-  const failedCount = Number(
-    output
-      .match(/(\d+) failed/g)
-      ?.at(-1)
-      ?.match(/\d+/)?.[0] ?? 0,
-  );
-  return {
-    passed,
-    exitCode: code,
-    timedOut: false,
-    cancelled: false,
-    durationMs: 0,
-    failedTests: [],
-    passedCount,
-    failedCount,
-    summary: passed
-      ? `Verified: ${passedCount} checks passed`
-      : `${failedCount || 1} checks failed`,
-    output,
-    fingerprint: createHash("sha256")
-      .update(output.replace(/\d+\.\d+s/g, "<time>"))
-      .digest("hex")
-      .slice(0, 16),
-    syntaxError: /SyntaxError|IndentationError/i.test(output),
-    infrastructureFailure: false,
-    infrastructureReason: null,
-    snapshotVerified: true,
-  };
-}
-
-function initialState(targetFile: string): SessionState {
-  return {
-    version: 1,
-    sessionId: "live-student-simulation",
-    mode: "verified",
-    providerMode: "luna",
-    task: {
-      text: "Implement binary search over a sorted list. Return a matching index or -1, handle empty and one-element lists, and aim for logarithmic time.",
-      summary: "Implement binary search over a sorted list.",
-      source: "selection",
-      startLine: 0,
-      endLine: 0,
-    },
-    targetSymbol: {
-      name: "binary_search",
-      kind: "function",
-      line: 0,
-      file: targetFile,
-    },
-    phase: "observing",
-    equivalentFailureCount: 0,
-    semanticProgressScore: 0,
-    experimentationEvidence: 0,
-    alternativeStrategyProbability: 0,
-    interventionsShown: 0,
-    silentDecisions: 0,
-    tutorFileEdits: 0,
-    tutorCodeLinesSupplied: 0,
-    checkCount: 0,
-    modelAssessmentCount: 0,
-    lastInterventionCheck: null,
-    struggleEpisode: 1,
-    episodeHasIntervention: false,
-    episodeSupportCount: 0,
-    latestVerification: null,
-    eventHistory: [],
-    lastCode: "",
-    lastFailureFingerprint: null,
-    observedFailureFingerprints: [],
-  };
-}
+import { CodexLunaProvider, checkCodexStatus } from "./providers.js";
+import { enforceAssessmentSafety } from "./safety.js";
+import { boundedCode, compactDiff, taskFromMarker } from "./taskContext.js";
+import type { AssessmentPacket, TrajectoryEvent } from "./types.js";
 
 async function main(): Promise<void> {
   const root = path.resolve(process.argv[2] ?? ".");
   const codexPath = process.argv[3] ?? "codex";
-  const workspace = path.join(root, "sample-workspace", "binary-search");
-  const python = path.join(workspace, ".venv", "Scripts", "python.exe");
-  const revisions = [
-    "beginner-syntax-1.py",
-    "beginner-syntax-2.py",
-    "beginner-stub.py",
+  if ((await checkCodexStatus(codexPath)) !== "ready")
+    throw new Error("Codex is not authenticated for the live simulation");
+
+  const demo = path.join(root, "sample-workspace", "binary-search");
+  const stateNames = [
     "first-failure.py",
     "progress.py",
     "repeated-stall.py",
     "persistent-stall.py",
     "correct-half-open.py",
   ];
-  const provider = new CodexCliProvider(
-    workspace,
+  const codes = await Promise.all(
+    stateNames.map(async (name) =>
+      boundedCode(await readFile(path.join(demo, "demo-states", name), "utf8")),
+    ),
+  );
+  const baselineCode = boundedCode(
+    await readFile(path.join(demo, "demo-states", "beginner-stub.py"), "utf8"),
+  );
+  const task = taskFromMarker(baselineCode);
+  if (!task) throw new Error("Live demo task marker was not found");
+  const provider = new CodexLunaProvider(
     codexPath,
-    [],
     path.join(root, ".agents", "skills", "socratic-runtime"),
   );
-  const state = initialState(path.join(workspace, "binary_search.py"));
+  const events: TrajectoryEvent[] = [];
   const observations: Array<Record<string, unknown>> = [];
+  let previousCode: string | null = baselineCode;
+  let trajectorySummary =
+    "The session started on a beginner stub. No revision has been assessed yet.";
+  let completedPacket: AssessmentPacket | null = null;
+  let completionSummary: string | null = null;
 
-  for (const name of revisions) {
-    const revisionPath = path.join(workspace, "demo-states", name);
-    const code = await readFile(revisionPath, "utf8");
-    const run = await runProcess(
-      python,
-      ["-m", "pytest", "-q", "-p", "no:cacheprovider"],
-      workspace,
-      {
-        ...process.env,
-        PYTHONDONTWRITEBYTECODE: "1",
-        SOCRATIC_CHECK: "1",
-        SOCRATIC_SOLUTION: revisionPath,
-      },
-    );
-    const result = verificationFrom(run.output, run.code);
-    state.checkCount += 1;
-    if (result.passed) {
-      observations.push({
-        revision: name,
-        verification: result.summary,
-        finalAction: "complete",
-        modelCalled: false,
-      });
-      state.latestVerification = result;
-      state.lastCode = code;
+  for (let index = 0; index < codes.length; index += 1) {
+    const currentCode = codes[index]!;
+    const packet: AssessmentPacket = {
+      task,
+      languageId: "python",
+      fileName: "binary_search.py",
+      previousCode,
+      currentCode,
+      revisionDiff: compactDiff(previousCode, currentCode),
+      diagnostics: [],
+      trajectorySummary,
+      recentEvents: events.slice(-8),
+      explicitHelpRequested: false,
+    };
+    const result = await provider.assess(packet);
+    if (!result.value)
+      throw new Error(`Live Luna assessment failed: ${result.error}`);
+    const decision = enforceAssessmentSafety(result.value);
+    events.push({
+      revision: index + 1,
+      learnerState: decision.learnerState,
+      action: decision.action,
+      summary: decision.assessment,
+      question: decision.question,
+    });
+    observations.push({
+      revision: stateNames[index],
+      learnerState: decision.learnerState,
+      action: decision.action,
+      modelAction: result.value.action,
+      question: decision.question,
+      modelQuestion: result.value.question,
+      safetyBlocked:
+        result.value.action === "ask_question" &&
+        decision.action !== "ask_question",
+      assessment: decision.assessment,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      fallback: result.error ?? "none",
+    });
+    trajectorySummary = decision.trajectorySummary;
+    previousCode = currentCode;
+    if (decision.action === "complete") {
+      completedPacket = packet;
+      completionSummary =
+        decision.completionSummary ?? "Luna assessed the task as complete.";
       break;
     }
+  }
 
-    const previousVerification = state.latestVerification;
-    const previousCode = state.lastCode;
-    const evidence = reduceVerification(state, result, code);
-    const packet: LearningStatePacket = {
-      language: "python",
-      task: { summary: state.task.summary, text: state.task.text },
-      target: { name: state.targetSymbol.name, kind: state.targetSymbol.kind },
-      currentCode: code,
-      previousCode: previousVerification ? previousCode : null,
-      revisionDiff: previousVerification ? "revision changed" : null,
-      recentEvents: state.eventHistory.slice(-8),
-      verification: modelVerificationResult(result),
-      previousVerification: previousVerification
-        ? abstractVerificationResult(previousVerification)
-        : null,
-      state: {
-        phase: state.phase,
-        equivalentFailureCount: state.equivalentFailureCount,
-        semanticProgressScore: state.semanticProgressScore,
-        experimentationEvidence: state.experimentationEvidence,
-        interventionsShown: state.interventionsShown,
-        checksSinceIntervention:
-          state.lastInterventionCheck === null
-            ? null
-            : state.checkCount - state.lastInterventionCheck,
-        struggleEpisode: state.struggleEpisode,
-        episodeHasIntervention: state.episodeHasIntervention,
-        episodeSupportCount: state.episodeSupportCount,
-        explicitHelpRequested: false,
-      },
-      permittedActions: [
-        "remain_silent",
-        "ask_prediction",
-        "suggest_experiment",
-        "direct_attention",
-        "ask_invariant",
-      ],
-      policyConstraints: [
-        "no code",
-        "no hidden-test disclosure",
-        "one concise question",
-        "executable verification is authoritative",
-      ],
-    };
-    const providerResult = await provider.analyze(packet, {
-      mode: "luna",
-      timeoutMs: 60_000,
-    });
-    const gate = gateModelDecision(state, providerResult.decision, evidence);
-    const transition = applyAssessmentTransition(
-      state,
-      result,
-      code,
-      providerResult.decision,
-      evidence,
-      gate,
+  let reference = null;
+  if (completedPacket && completionSummary) {
+    const result = await provider.createReference(
+      completedPacket,
+      completionSummary,
     );
-    observations.push({
-      revision: name,
-      verification: result.summary,
-      provider: providerResult.provider,
-      model: providerResult.model,
-      fallback: providerResult.fallbackReason ?? "none",
-      learnerState: providerResult.decision.learnerState,
-      progressAssessment: providerResult.decision.progressAssessment,
-      modelAction: providerResult.decision.decision,
-      studentVisibleText: gate.visibleText,
-      safetyDecision: gate.reason,
-      finalAction: transition.finalAction,
-    });
+    if (!result.value)
+      throw new Error(`Live reference generation failed: ${result.error}`);
+    reference = {
+      title: result.value.title,
+      language: "python",
+      hasCode: result.value.code.trim().length > 0,
+      complexity: result.value.complexity,
+    };
   }
 
   const report = {
     generatedAt: new Date().toISOString(),
-    codexLogin: "checked_before_run",
+    methodology:
+      "real GPT-5.6 Luna medium assessments over successive learner-authored revisions; no local tests or recorded tutoring output",
     observations,
+    reference,
   };
-  const outputPath = path.join(
+  const output = path.join(
     root,
     "artifacts",
     "live-probes",
-    "model-led-student-simulation.json",
+    "luna-student-journey.json",
   );
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+  await mkdir(path.dirname(output), { recursive: true });
+  await writeFile(output, `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report, null, 2));
 
-  const completed = observations.at(-1)?.finalAction === "complete";
-  const intervened = observations.some(
-    (observation) => observation.finalAction === "intervene",
-  );
-  const preservedFirstAttempt =
-    observations.at(0)?.finalAction === "remain_silent";
-  if (!completed || !intervened || !preservedFirstAttempt) {
+  const actions = observations.map((item) => item.action);
+  const modelActions = observations.map((item) => item.modelAction);
+  if (
+    !modelActions.includes("remain_silent") ||
+    !actions.includes("ask_question") ||
+    !actions.includes("complete") ||
+    !reference?.hasCode
+  )
     throw new Error(
-      `Beginner simulation contract failed: completed=${completed}, intervened=${intervened}, preservedFirstAttempt=${preservedFirstAttempt}`,
+      `Live journey contract failed: modelActions=${modelActions.join(",")}, deliveredActions=${actions.join(",")}, reference=${Boolean(reference?.hasCode)}`,
     );
-  }
 }
 
 void main();

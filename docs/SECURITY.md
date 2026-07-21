@@ -1,27 +1,13 @@
 # Security
 
-## Execution boundary
+Learner source, comments, task text, diagnostics, and model output are untrusted data.
 
-- Verified mode requires a trusted VS Code workspace.
-- The exact `.socratic/exercise.json` verifier is shown for explicit approval.
-- Changing the verifier configuration invalidates its approval.
-- Commands run as bounded argument arrays with `shell: false`.
-- Relative path traversal, unknown fields, inline interpreter evaluation, and `npx` auto-downloads are rejected.
-- Workspace-local verifier wrappers are checked lexically and after real-path resolution, including symlink escape protection.
-- The verifier receives a disposable unsaved snapshot and a time limit. Cancellation terminates the owned process tree on Windows.
-- Ordinary-project mode creates a bounded disposable copy, replaces only the copied target, and excludes repositories, dependencies, caches, symlinks, common secret/key files, and oversized workspaces.
-- Environment variables whose names indicate tokens, secrets, passwords, API keys, or authentication are removed before verifier launch.
+- No learner or task content is executed.
+- Codex runs without a shell, in a read-only sandbox and isolated temporary directory.
+- Only a small environment allowlist is forwarded.
+- Requests time out and are cancelled when a newer edit makes them stale.
+- JSON schemas and validators reject unexpected fields and malformed actions.
+- Active-session questions receive a final solution-leakage screen.
+- The extension never writes learner files.
 
-## Untrusted inputs
-
-Task text, learner code, diagnostics, verifier output, retained state, and model output are treated as untrusted data. Task comments never configure execution. Model instructions label the packet as data and run in a read-only sandbox rooted at a disposable packet-only directory rather than the learner workspace.
-
-## Model-output boundary
-
-Model output must match a strict schema. The deterministic gate normalizes encoded text and enforces confidence, alternative-strategy, leakage, question-shape, length, cooldown, and episode constraints. It rejects code, recipes, links, Markdown, hidden-test details, and multiple questions.
-
-New edits cancel stale verification or Codex work. Duplicate source/evidence pairs are not reassessed unless the learner explicitly requests a bounded follow-up nudge. Provider errors fail to silence.
-
-Optional reference comparisons are exercise-authored workspace files declared in the validated configuration. They are size-bounded, HTML-escaped, included in the approval fingerprint, and unavailable until executable verification passes.
-
-Setup Doctor may detect framework metadata and write `.socratic/exercise.json` after an explicit action. Detection never executes package scripts. Start Session separately displays and fingerprints the exact command before it can run.
+The post-completion reference is model-generated and may be imperfect. It is displayed as comparison material, never applied automatically.

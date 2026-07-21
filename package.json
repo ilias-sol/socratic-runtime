@@ -1,8 +1,8 @@
 {
   "name": "socratic-runtime",
   "displayName": "Socratic Runtime",
-  "description": "A GPT-5.6 Socratic IDE tutor that evaluates learner progress before intervening.",
-  "version": "0.2.2",
+  "description": "A language-agnostic VS Code learning companion that asks only when GPT-5.6 Luna decides a Socratic question will help.",
+  "version": "0.3.0",
   "publisher": "socratic-runtime",
   "license": "MIT",
   "repository": {
@@ -26,48 +26,32 @@
     "codex",
     "gpt-5.6",
     "tutor",
-    "abstention"
+    "learning"
   ],
   "activationEvents": [
-    "onCommand:socraticRuntime.startSession",
-    "workspaceContains:.socratic/exercise.json"
+    "onCommand:socraticRuntime.startSession"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "socraticRuntime.startSession",
-        "title": "Socratic Runtime: Start Session"
+        "title": "Socratic Runtime: Start on Current File"
       },
       {
-        "command": "socraticRuntime.runCheck",
-        "title": "Socratic Runtime: Run Check",
-        "icon": "$(beaker)"
+        "command": "socraticRuntime.askForNudge",
+        "title": "Socratic Runtime: Ask for a Nudge",
+        "icon": "$(lightbulb)"
       },
       {
-        "command": "socraticRuntime.useSelectionAsTask",
-        "title": "Socratic Runtime: Start Session from Selection"
+        "command": "socraticRuntime.pause",
+        "title": "Socratic Runtime: Pause",
+        "icon": "$(debug-pause)"
       },
       {
-        "command": "socraticRuntime.copySelectionAsTaskMarker",
-        "title": "Socratic Runtime: Copy Selection as Task Marker"
-      },
-      {
-        "command": "socraticRuntime.runSetupDoctor",
-        "title": "Socratic Runtime: Run Setup Doctor"
-      },
-      {
-        "command": "socraticRuntime.openDecisionTrace",
-        "title": "Socratic Runtime: Open Decision Trace",
-        "icon": "$(output)"
-      },
-      {
-        "command": "socraticRuntime.openPolicyComparison",
-        "title": "Socratic Runtime: Open Policy Comparison"
-      },
-      {
-        "command": "socraticRuntime.resetDemo",
-        "title": "Socratic Runtime: Reset Demo"
+        "command": "socraticRuntime.resume",
+        "title": "Socratic Runtime: Resume",
+        "icon": "$(debug-start)"
       },
       {
         "command": "socraticRuntime.endSession",
@@ -75,18 +59,13 @@
         "icon": "$(debug-stop)"
       },
       {
-        "command": "socraticRuntime.pauseWatching",
-        "title": "Socratic Runtime: Pause Watching",
-        "icon": "$(debug-pause)"
+        "command": "socraticRuntime.openDecisionTrace",
+        "title": "Socratic Runtime: Open Luna Trace",
+        "icon": "$(output)"
       },
       {
-        "command": "socraticRuntime.resumeWatching",
-        "title": "Socratic Runtime: Resume Watching",
-        "icon": "$(debug-start)"
-      },
-      {
-        "command": "socraticRuntime.openHelp",
-        "title": "Socratic Runtime: Open Help View"
+        "command": "socraticRuntime.openSupport",
+        "title": "Socratic Runtime: Open Learning Support"
       }
     ],
     "viewsContainers": {
@@ -102,7 +81,7 @@
       "socraticRuntime": [
         {
           "type": "webview",
-          "id": "socraticRuntime.help",
+          "id": "socraticRuntime.support",
           "name": "Learning Support"
         }
       ]
@@ -110,33 +89,23 @@
     "menus": {
       "view/title": [
         {
-          "command": "socraticRuntime.runSetupDoctor",
-          "when": "view == socraticRuntime.help && !socraticRuntime.active",
-          "group": "navigation@0"
-        },
-        {
-          "command": "socraticRuntime.runCheck",
-          "when": "view == socraticRuntime.help",
+          "command": "socraticRuntime.askForNudge",
+          "when": "view == socraticRuntime.support && socraticRuntime.active",
           "group": "navigation@1"
         },
         {
-          "command": "socraticRuntime.pauseWatching",
-          "when": "view == socraticRuntime.help && socraticRuntime.watching",
-          "group": "navigation@2"
-        },
-        {
-          "command": "socraticRuntime.resumeWatching",
-          "when": "view == socraticRuntime.help && socraticRuntime.paused",
+          "command": "socraticRuntime.pause",
+          "when": "view == socraticRuntime.support && socraticRuntime.active",
           "group": "navigation@2"
         },
         {
           "command": "socraticRuntime.openDecisionTrace",
-          "when": "view == socraticRuntime.help && socraticRuntime.active",
+          "when": "view == socraticRuntime.support",
           "group": "session@1"
         },
         {
           "command": "socraticRuntime.endSession",
-          "when": "view == socraticRuntime.help && socraticRuntime.active",
+          "when": "view == socraticRuntime.support && socraticRuntime.active",
           "group": "session@2"
         }
       ]
@@ -144,71 +113,34 @@
     "configuration": {
       "title": "Socratic Runtime",
       "properties": {
-        "socraticRuntime.analysisMode": {
-          "type": "string",
-          "enum": [
-            "luna",
-            "sol"
-          ],
-          "default": "luna",
-          "description": "Luna performs responsive GPT-5.6 learner-state assessment. Sol provides optional deeper analysis. Both use the signed-in Codex CLI."
-        },
         "socraticRuntime.codexPath": {
           "type": "string",
           "default": "codex",
           "description": "Codex CLI executable used for live analysis."
         },
-        "socraticRuntime.autoCheck": {
-          "type": "boolean",
-          "default": true,
-          "description": "Quietly review each new target-file revision. Verified sessions run approved tests; Guidance-only sessions make no correctness claim."
-        },
-        "socraticRuntime.autoCheckIntervalMs": {
+        "socraticRuntime.idleDelayMs": {
           "type": "number",
-          "default": 5000,
-          "minimum": 2000,
-          "maximum": 60000,
-          "description": "Upper bound on the idle wait for a pending revision. Continuous typing resets the timer, and unchanged code is never rechecked."
-        },
-        "socraticRuntime.autoCheckDebounceMs": {
-          "type": "number",
-          "default": 4000,
+          "default": 2000,
           "minimum": 1000,
           "maximum": 10000,
-          "description": "Wait for this much typing idle time before checking the newest revision."
-        },
-        "socraticRuntime.autoPauseAfterMs": {
-          "type": "number",
-          "default": 600000,
-          "minimum": 0,
-          "maximum": 7200000,
-          "description": "Pause automatic watching after this much target-file inactivity. The timeout itself never runs a check or contacts AI. Set to 0 to disable."
-        },
-        "socraticRuntime.retainSessions": {
-          "type": "boolean",
-          "default": false,
-          "description": "Retain redacted session traces in VS Code extension storage."
+          "description": "Wait after typing stops before sending one meaningful revision to GPT-5.6 Luna."
         }
       }
     }
   },
   "scripts": {
     "clean": "node scripts/clean.mjs",
-    "format": "prettier --check src test scripts docs evals README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace/binary-search/.socratic/exercise.json sample-workspace/binary-search/.vscode/settings.json",
-    "format:write": "prettier --write src test scripts docs evals README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace/binary-search/.socratic/exercise.json sample-workspace/binary-search/.vscode/settings.json",
+    "format": "prettier --check src test scripts docs README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace",
+    "format:write": "prettier --write src test scripts docs README.md AGENTS.md package.json tsconfig.json eslint.config.mjs pnpm-workspace.yaml sample-workspace",
     "lint": "eslint src test --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
     "test": "vitest run --dir test",
     "test:extension": "node scripts/test-extension.mjs",
-    "test:python": "node scripts/test-python.mjs",
-    "test:evals": "node scripts/run-evals.mjs",
     "test:live": "node scripts/live-simulate.mjs",
     "audit:submission": "node scripts/audit-submission.mjs",
     "package": "node scripts/package.mjs",
     "judge:bundle": "node scripts/judge-bundle.mjs",
-    "demo:reset": "node scripts/reset-demo.mjs",
-    "setup": "node scripts/setup.mjs",
     "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {

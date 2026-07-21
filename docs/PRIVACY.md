@@ -1,17 +1,7 @@
 # Privacy
 
-Live assessment sends a minimized packet to GPT-5.6 through the official local Codex CLI under the user's existing ChatGPT/Codex policies.
+Only the active file participates in a session. Each assessment may send its confirmed task, language identifier, filename, up to 30,000 characters of current source, a bounded prior revision/diff, capped VS Code diagnostics, and a short recent trajectory through the authenticated Codex CLI.
 
-The packet includes the explicit task, language, target name and kind, capped previous/current target bodies, compact diff, recent redacted events, aggregate verification state, and a diagnostic excerpt scrubbed of paths, test identifiers, quoted values, and numeric literals.
+The extension does not crawl the workspace, read `.env` files, collect Git history, run learner code, or persist source packets. Temporary schema, skill, and response files are created with restricted permissions and removed after every call. Decision trace output contains decisions and timing for local inspection; it should not reproduce source code.
 
-Guidance-only packets use bounded VS Code error/warning messages instead of executable results and explicitly mark `snapshotVerified: false`.
-
-It excludes credentials, unrelated files, dependency trees, raw keystrokes, exact hidden-test identities, and raw verifier output.
-
-The extension stages the packaged Socratic classification skill in a random temporary assessment directory and launches `codex exec` from that directory. The learner workspace is not the Codex working directory or readable workspace root. The subprocess environment is allowlisted for operating-system and Codex sign-in discovery variables; ambient API keys, repository tokens, database URLs, and application secrets are not inherited.
-
-An author-provided reference comparison is read locally only after verified completion and is not added to the GPT learner-state packet.
-
-Disposable-project verification is local and never becomes the Codex working directory. Copies exclude `.git`, dependency directories, caches, symlinks, common credential/key files, and size limits prevent unbounded collection. JavaScript `node_modules`, when present, is linked into the temporary verifier workspace but is not sent to GPT-5.6.
-
-The extension never reads Codex authentication files, OAuth tokens, environment API keys, or the OS credential store. Session retention is disabled by default. When enabled, a redacted allowlist omits learner code, task text, question text, verifier output, file paths, symbols, and test identities.
+Users should not start a session on files they are not permitted to send to the configured Codex service.

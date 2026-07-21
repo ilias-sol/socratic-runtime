@@ -1,52 +1,11 @@
 # Architecture
 
-Socratic Runtime separates correctness evidence, pedagogical judgment, and safety enforcement.
+The extension observes one active VS Code text document. It obtains the task from an `@socratic-task` comment, the current selection, or a Luna-generated proposal that the learner confirms. There are no exercise manifests or language toolchains.
 
-Setup Doctor checks workspace trust, the existing Codex sign-in, task binding, target detection, and verifier readiness. It can write a configuration after the learner selects a supported preset, but it never runs that verifier. Start Session separately displays and fingerprints the exact command for approval. Verified sessions then follow the executable path below; without a matching approved verifier, Guidance-only sessions send explicitly non-executable revision evidence through the same model and safety boundary but cannot reach verified completion.
+After a meaningful edit, a two-second debounce builds a bounded assessment packet containing the task, language identifier, filename, prior and current source, compact diff, editor diagnostics, trajectory summary, recent decisions, and whether help was explicitly requested. A new edit cancels an in-flight request.
 
-```text
-task marker + target symbol
-          |
-          v
-approved shell-free verifier on an unsaved snapshot
-          |
-          v
-objective pass/fail evidence
-          |
-          +---- pass ----> verified completion
-          |
-          +---- fail ----> minimized learner-state packet
-                              |
-                              v
-                    Codex CLI / GPT-5.6
-                              |
-                              v
-                 structured pedagogical decision
-                              |
-                              v
-                    deterministic safety gate
-                              |
-                 silence or one gated support step
-```
+Codex CLI runs GPT-5.6 Luna with medium reasoning in an ephemeral, read-only temporary directory. A packaged `$socratic-runtime` skill supplies the teaching contract. Strict JSON schemas allow three actions: silence, one question, or completion.
 
-`src/taskParser.ts` associates explicit task markers with common function, method, or class declarations across several language shapes and formats selected problem text as a durable clipboard marker without editing learner files.
+Luna owns the semantic and pedagogical decision. Deterministic host code owns process timeouts, cancellation, output size, schema validation, environment minimization, and leakage screening. This boundary prevents a threshold system from second-guessing contextual teaching decisions while retaining safety controls.
 
-`src/frameworkPresets.ts` detects bounded, evidence-backed pytest, Vitest, Jest, and Node test-runner presets. Setup Doctor reports readiness and writes a validated configuration only after an explicit learner action.
-
-`src/exerciseConfig.ts` validates relative workspace paths, bounded argument arrays, supported executables, timeouts, and optional snapshot extensions. Task comments cannot configure execution.
-
-`src/verification.ts` either writes the unsaved target buffer to a disposable snapshot or delegates to `src/workspaceCopy.ts` to create a bounded project copy and replace only the copied target. It runs the approved verifier with `shell: false`, removes credential-like environment variables, captures bounded output, and deletes the temporary workspace. Exit status is authoritative.
-
-`src/guidance.ts` creates explicitly non-executable revision evidence from bounded editor diagnostics. Its result is structurally unable to pass or claim completion.
-
-`src/packet.ts` relocates and extracts the current target body, caps its size, and builds a compact revision diff. `src/privacy.ts` abstracts verification and removes paths, test identifiers, quoted values, and numeric literals from diagnostic excerpts.
-
-`src/providers.ts` stages the packaged Socratic skill in a disposable packet-only workspace, invokes `codex exec` there in an ephemeral read-only sandbox with a strict output schema and allowlisted environment, and removes the workspace afterward. The learner workspace is not exposed as the Codex working directory. A new edit aborts the child process. Invalid, unavailable, timed-out, or unauthenticated providers fail to silence.
-
-`src/assessmentTransition.ts` is the shared production state transition used by both the extension and deterministic evaluation replay. It owns trajectory counters, struggle episodes, final silence/intervention accounting, and phase changes so evaluation fixtures cannot drift from runtime behavior.
-
-`src/policy.ts` collects objective evidence and enforces the local safety gate. It does not reclassify pedagogical progress.
-
-`src/extension.ts` owns Setup Doctor, preset selection, workspace trust, verifier approval, verified/guidance mode selection, revision scheduling, deduplication, cancellation, UI state, session lifecycle, and verified completion.
-
-The first question in a struggle episode is unsolicited and model-selected. Further support requires an explicit learner action and is capped at three total steps per episode. Verified completion may unlock a trusted exercise-authored reference comparison.
+Completion stops observation. A separate post-completion call produces reference code, explanation, and complexity material in the Learning Support view. It never writes the learner's file.

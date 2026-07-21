@@ -1,23 +1,13 @@
-# Socratic Runtime judge path
+# Judge quick start
 
-Socratic Runtime is a VS Code extension powered by the signed-in Codex CLI and GPT-5.6. The extension runs trusted executable checks locally, sends a minimized learner-state packet to Codex from a packet-only temporary workspace, and applies a deterministic safety gate before showing one concise automatic question. Further nudges require an explicit learner request.
+The bundle contains the packaged extension and one plain Python demonstration file. Python does not need to be installed because Socratic Runtime does not execute learner code.
 
-## Prepare the demo
+1. In VS Code, run **Extensions: Install from VSIX...** and choose `socratic-runtime-0.3.0.vsix`.
+2. Reload VS Code, then open `binary-search-demo/binary_search.py`. Trust the folder if VS Code shows its standard workspace-trust prompt.
+3. Confirm Codex CLI is installed and signed in with your existing ChatGPT/Codex account (`codex login status`). No new account or API key is needed.
+4. Press `Ctrl+Shift+P` and run **Socratic Runtime: Start on Current File**.
+5. Replace `pass` with a few beginner attempts. Pause for two seconds after each edit.
 
-From this bundle directory, run:
+Watch the **Learning Support** panel. Luna should stay silent during plausible progress and ask one question when it judges that an intervention would help. **Ask for a Nudge** is always available. When Luna considers the exercise complete, observation stops and the tray shows a post-completion reference solution.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
-```
-
-Then:
-
-1. Install `socratic-runtime-0.2.1.vsix` with **Extensions: Install from VSIX**.
-2. Open `binary-search-demo` in VS Code and trust the workspace.
-3. Open `binary_search.py` and run **Socratic Runtime: Start Session**.
-4. Review and approve the exact verifier command.
-5. Copy the numbered files in `demo-states` into `binary_search.py` in sequence.
-
-The live pedagogical wording may vary. The Decision Trace shows verification evidence, GPT-5.6 classification, the model-selected action, and the deterministic gate result. Executable checks—not model confidence—own completion.
-
-For the fresh-project experience, open an ordinary pytest repository with an `@socratic-task` marker and run **Socratic Runtime: Run Setup Doctor**. It checks the existing ChatGPT/Codex sign-in and detects pytest. After the learner selects the proposed preset, Setup Doctor creates a disposable-copy verifier configuration; Start Session separately asks for approval of the exact command. Without a supported or author-configured verifier, the extension clearly enters Guidance-only mode and cannot claim correctness.
+Exact intervention timing and wording are live model decisions. **Socratic Runtime: Open Luna Trace** shows the reason for every decision.
