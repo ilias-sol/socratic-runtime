@@ -2,7 +2,7 @@
 
 Socratic Runtime separates correctness evidence, pedagogical judgment, and safety enforcement.
 
-Setup Doctor first resolves workspace trust, the existing Codex sign-in, task binding, target symbol, and an approved verifier. Verified sessions follow the executable path below. Without a matching verifier, Guidance-only sessions send explicitly non-executable revision evidence through the same model and safety boundary but cannot reach verified completion.
+Setup Doctor checks workspace trust, the existing Codex sign-in, task binding, target detection, and verifier readiness. It can write a configuration after the learner selects a supported preset, but it never runs that verifier. Start Session separately displays and fingerprints the exact command for approval. Verified sessions then follow the executable path below; without a matching approved verifier, Guidance-only sessions send explicitly non-executable revision evidence through the same model and safety boundary but cannot reach verified completion.
 
 ```text
 task marker + target symbol

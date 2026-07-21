@@ -1,6 +1,6 @@
 # Socratic Runtime judge path
 
-Socratic Runtime is a VS Code extension powered by the signed-in Codex CLI and GPT-5.6. The extension runs trusted executable checks locally, sends a minimized learner-state packet to Codex from a packet-only temporary workspace, and applies a deterministic safety gate before showing at most one concise question.
+Socratic Runtime is a VS Code extension powered by the signed-in Codex CLI and GPT-5.6. The extension runs trusted executable checks locally, sends a minimized learner-state packet to Codex from a packet-only temporary workspace, and applies a deterministic safety gate before showing one concise automatic question. Further nudges require an explicit learner request.
 
 ## Prepare the demo
 
@@ -20,4 +20,4 @@ Then:
 
 The live pedagogical wording may vary. The Decision Trace shows verification evidence, GPT-5.6 classification, the model-selected action, and the deterministic gate result. Executable checks—not model confidence—own completion.
 
-For the fresh-project experience, open an ordinary pytest repository with an `@socratic-task` marker and run **Socratic Runtime: Run Setup Doctor**. It checks the existing ChatGPT/Codex sign-in, detects pytest, and can generate a disposable-copy verifier configuration after explicit approval. Without tests, the extension clearly enters Guidance-only mode and cannot claim correctness.
+For the fresh-project experience, open an ordinary pytest repository with an `@socratic-task` marker and run **Socratic Runtime: Run Setup Doctor**. It checks the existing ChatGPT/Codex sign-in and detects pytest. After the learner selects the proposed preset, Setup Doctor creates a disposable-copy verifier configuration; Start Session separately asks for approval of the exact command. Without a supported or author-configured verifier, the extension clearly enters Guidance-only mode and cannot claim correctness.

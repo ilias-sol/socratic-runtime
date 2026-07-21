@@ -10,7 +10,7 @@
 
 <p align="center"><strong>Powered by the Codex CLI and GPT-5.6.</strong> If you already have Codex access through ChatGPT, the extension reuses that local Codex sign-in—no Socratic Runtime account or application API key is required.</p>
 
-Socratic Runtime is a VS Code extension for programming learners. Install it, use the Codex CLI with your existing ChatGPT subscription sign-in, place the assignment beside the code, and start learning—there is no Socratic Runtime registration, application API key, hosted tutoring backend, or separate learning platform. Codex CLI and the Codex IDE extension share cached authentication, so an existing local sign-in can carry into the tutoring flow. Socratic Runtime checks real coding attempts, asks GPT-5.6 to classify the learner's observable trajectory, and intervenes only when the evidence supports a credible stall. Silence is a deliberate product action—not a missing response.
+Socratic Runtime is a VS Code extension for programming learners. It uses the local Codex CLI and an existing ChatGPT subscription sign-in, so there is no separate Socratic Runtime registration, application API key, hosted tutoring backend, or learning platform. The extension follows real coding attempts, asks GPT-5.6 to classify the learner's observable trajectory, and intervenes only when the evidence supports a credible stall. Silence is a deliberate product action—not a missing response.
 
 The extension is the local runtime: it runs the approved executable verifier, constructs a minimized learner-state packet, invokes `codex exec` from an isolated packet-only workspace, and applies deterministic schema, uncertainty, episode, and leakage gates before anything reaches the learner. Codex supplies model-led pedagogical judgment; the host retains authority over execution and safety.
 
@@ -18,7 +18,23 @@ The extension never inserts learner code, never treats model confidence as proof
 
 > **Current scope:** The runtime contract is language-neutral and accepts approved, bounded verifier commands for toolchains including Java, Maven, Gradle, .NET, Rust, and Go. Setup Doctor currently generates presets for pytest, Vitest, Jest, and Node's test runner. Python and pytest remain the fully exercised end-to-end demonstration path; other toolchains require author configuration and should not be read as equally validated.
 
-## One-minute setup
+## Install the packaged extension
+
+1. Download `socratic-runtime-0.2.0.vsix` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest).
+2. In VS Code, run **Extensions: Install from VSIX** and select the downloaded file.
+3. Reload VS Code when prompted.
+
+That is the complete extension installation. Node.js and `npm` are needed only to build from source, not to install the packaged release.
+
+### Runtime requirements
+
+- Windows 10 or 11; macOS and Linux have not yet been release-tested
+- VS Code 1.95 or newer
+- An installed and authenticated Codex CLI
+- Network access and GPT-5.6 model entitlement
+- A source file with a detectable task; supported tests or an author-provided verifier are additionally required for Verified mode
+
+## Start a session
 
 1. Open a source file inside a trusted VS Code workspace.
 2. Place an `@socratic-task` problem statement directly above the target function, method, or class—or select the assignment and run **Start Session from Selection**.
@@ -32,13 +48,13 @@ You do not need to hand-write `.socratic/exercise.json` for a detected preset. S
 
 Most coding assistants optimize the current request: explain, suggest, or generate. Socratic Runtime instead manages **when assistance should enter an active learning process**. After the learner starts a session, it observes bounded evidence across revisions and treats silence as a successful product action when self-correction remains productive.
 
-| Conventional coding assistant                 | Socratic Runtime                                        |
-| --------------------------------------------- | ------------------------------------------------------- |
-| Responds when prompted                        | May deliberately remain silent                          |
-| Optimizes for producing a useful answer       | Protects room for learner-generated reasoning           |
-| May let the model estimate correctness        | Gives executable verification sole completion authority |
-| Can reveal implementation details immediately | Allows at most one short, leakage-checked question      |
-| Usually reacts to the current snapshot        | Compares evidence and progress across revisions         |
+| Conventional coding assistant                 | Socratic Runtime                                            |
+| --------------------------------------------- | ----------------------------------------------------------- |
+| Responds when prompted                        | May deliberately remain silent                              |
+| Optimizes for producing a useful answer       | Protects room for learner-generated reasoning               |
+| May let the model estimate correctness        | Gives executable verification sole completion authority     |
+| Can reveal implementation details immediately | Shows one gated question; follow-ups require learner action |
+| Usually reacts to the current snapshot        | Compares evidence and progress across revisions             |
 
 GPT-5.6 owns the pedagogical judgment—productive progress, experimentation, uncertainty, or credible stall—but it never gains authority over execution or completion. The deterministic host owns command approval, isolation, schema validation, uncertainty thresholds, intervention limits, privacy reduction, and solution-leakage blocking.
 
@@ -111,47 +127,23 @@ Task text is treated as untrusted content. It can never configure or execute a c
 
 **Copy Selection as Task Marker** turns selected problem text into a language-appropriate marker on the clipboard. The learner remains in control of the file: the extension never inserts or edits learner code.
 
-## Install the extension
+## Try the prepared demonstration
 
-Installing a release does **not** require Node.js, `npm install`, or `npm run setup`.
+The recommended judge bundle contains the packaged extension, binary-search workspace, setup script, and numbered walkthrough in one download:
 
-### Requirements
-
-- Windows 10 or 11; macOS and Linux have not yet been release-tested
-- VS Code 1.95 or newer
-- An installed and authenticated Codex CLI
-- Network access and GPT-5.6 model entitlement
-- A prepared exercise workspace with its own tests, toolchain, and `.socratic/exercise.json`, or a supported test-backed workspace that Setup Doctor can configure
-
-### Installation
-
-1. Download the `.vsix` attached to the project release.
-2. In VS Code, run **Extensions: Install from VSIX**.
-3. Reload VS Code and open a prepared or supported test-backed workspace.
-4. Trust the workspace and confirm `codex login status` succeeds.
-5. Open the configured target and run **Socratic Runtime: Start Session**.
-6. Inspect and approve the exact verifier command shown by the extension.
-
-The extension never installs exercise dependencies on the learner's behalf.
-
-## Test the release without rebuilding
-
-The release asset and bundled binary-search workspace give judges a complete test path without Node.js or a source build:
-
-1. Download the release `.vsix` and the repository source archive.
-2. Install the `.vsix` with **Extensions: Install from VSIX**.
-3. From the extracted repository, create the demo's Python environment:
+1. Download `socratic-runtime-judge-bundle.zip` from the [latest release](https://github.com/ilias-sol/socratic-runtime/releases/latest) and extract it.
+2. From the extracted bundle directory, create the demo environment and check Codex readiness:
 
    ```powershell
-   python -m venv sample-workspace/binary-search/.venv
-   .\sample-workspace\binary-search\.venv\Scripts\python.exe -m pip install -r .\sample-workspace\binary-search\requirements.txt
+   powershell -ExecutionPolicy Bypass -File .\setup-demo.ps1
    ```
 
-4. Open `sample-workspace/binary-search` in VS Code, trust it, and open `binary_search.py`.
-5. Run **Socratic Runtime: Start Session**, review the verifier command, and approve it.
-6. Copy the prepared `demo-states` into the learner file in sequence to exercise first failure, progress, repeated struggle, and verified completion.
+3. Install the included `socratic-runtime-0.2.0.vsix` with **Extensions: Install from VSIX**.
+4. Open `binary-search-demo` in VS Code, trust the workspace, and open `binary_search.py`.
+5. Run **Socratic Runtime: Start Session**, review the exact verifier command, and approve it.
+6. Copy the numbered files in `demo-states` into `binary_search.py` in sequence to exercise first failure, progress, repeated struggle, and verified completion.
 
-`binary_search.py` is the learner's editable working file, not a supplied answer. For expected observations and troubleshooting, use the shorter [Judge guide](docs/JUDGE_GUIDE.md).
+`binary_search.py` is the learner's editable working file, not a supplied answer. The extension never installs dependencies for an ordinary learner project; `setup-demo.ps1` prepares only this bundled demonstration. See the [Judge guide](docs/JUDGE_GUIDE.md) for expected observations and troubleshooting.
 
 ## Build and verify from source
 
@@ -180,7 +172,7 @@ The extension also:
 - can copy an ordinary project into a bounded temporary workspace, replace only the copied target with the unsaved revision, run approved tests there, and delete the copy;
 - invokes Codex in an ephemeral read-only sandbox from a packet-only working directory and a credential-reduced environment;
 - rejects malformed output, code, recipes, links, hidden-test disclosure, and multiple questions;
-- retains no session by default and uses a redacted allowlist when retention is enabled.
+- persists no session by default and uses a redacted allowlist when retention is enabled.
 
 See [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) for the exact boundaries.
 
@@ -188,7 +180,7 @@ See [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) for the exact bo
 
 `npm run verify` covers formatting, linting, types, 121 automated TypeScript tests including a production-state learner journey and disposable-project execution, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, VSIX creation, and the one-download judge bundle.
 
-The dependency audit reports no known vulnerabilities. These checks verify implementation behavior; they do not prove tutoring efficacy or human learning outcomes.
+These checks verify implementation behavior and release composition; they do not prove tutoring efficacy or human learning outcomes.
 
 ## Scope and limitations
 
@@ -200,7 +192,20 @@ The dependency audit reports no known vulnerabilities. These checks verify imple
 - Progressive support stops after three questions in one episode and directs a still-stuck learner toward human help.
 - The timing simulations are deterministic software tests, not a human-subject usability study.
 
-Exercise authors can review the [task and verifier format](docs/TASK_FORMAT.md). Additional technical detail is available in [Architecture](docs/ARCHITECTURE.md), [Intervention policy](docs/INTERVENTION_POLICY.md), [Model integration](docs/MODEL_INTEGRATION.md), [Evaluation](docs/EVALUATION.md), and [Limitations](docs/LIMITATIONS.md).
+## Documentation
+
+| Document                                                    | Purpose                                                              |
+| ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Judge guide](docs/JUDGE_GUIDE.md)                          | Fast demonstration path and expected evidence                        |
+| [Task and verifier format](docs/TASK_FORMAT.md)             | Setup Doctor output and manual exercise-author configuration         |
+| [Architecture](docs/ARCHITECTURE.md)                        | Runtime components and authority boundaries                          |
+| [Product invariants](docs/PRODUCT_INVARIANTS.md)            | Non-negotiable behavior the implementation must preserve             |
+| [Intervention policy](docs/INTERVENTION_POLICY.md)          | Model decisions, abstention rules, follow-ups, and leakage gates     |
+| [Model integration](docs/MODEL_INTEGRATION.md)              | Live Codex invocation, packet shape, cancellation, and fallback      |
+| [Authentication](docs/AUTHENTICATION.md)                    | Existing Codex sign-in and credential boundaries                     |
+| [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) | Data minimization, isolation, command approval, and untrusted inputs |
+| [Evaluation](docs/EVALUATION.md)                            | Automated evidence and what it does not establish                    |
+| [Limitations](docs/LIMITATIONS.md)                          | Current platform, language, verifier, and research boundaries        |
 
 ## Built with Codex and GPT-5.6
 

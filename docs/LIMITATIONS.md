@@ -1,7 +1,7 @@
 # Limitations
 
 - Live assessment requires an installed and authenticated Codex CLI, network access, and model entitlement.
-- Python and pytest are the fully exercised demonstration. Vitest, Jest, and Node test-runner presets depend on the repository's existing scripts and dependencies.
+- Python and pytest are the fully exercised end-to-end demonstration. Vitest, Jest, and Node test-runner presets depend on the repository's existing scripts and dependencies. The runtime accepts bounded Java, Maven, Gradle, .NET, Rust, and Go verifier commands, but those toolchains do not yet have equivalent end-to-end certification fixtures.
 - Symbol discovery covers common declaration shapes, not every language grammar or generated source format.
 - Generic verification-count parsing is best-effort; process exit status remains authoritative. Verifiers should emit explicit no-tests evidence if an empty test run must be rejected.
 - Automatic snapshot checks cover the configured target only. Arbitrary terminal commands are outside the runtime.

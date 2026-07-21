@@ -5,7 +5,7 @@
 - Executable verification alone establishes correctness and completion.
 - Silence is an explicit action, trace event, and metric.
 - The extension never writes learner code or supplies replacement code during an exercise.
-- A student-visible intervention is one concise question of at most 180 characters.
+- A learner-visible intervention is one concise question of at most 180 characters.
 - At most one unsolicited question is shown in a struggle episode; the learner may explicitly request up to two additional gated nudges. Meaningful progress opens a new episode.
 - Low confidence, plausible alternative strategies, leakage risk, malformed output, or provider failure produce silence.
 - Every target revision is checked at most once from an isolated unsaved snapshot.
