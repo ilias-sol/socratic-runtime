@@ -180,7 +180,7 @@ See [Privacy](docs/PRIVACY.md) and [Security](docs/SECURITY.md) for the exact bo
 
 ## Verification
 
-`npm run verify` covers formatting, linting, types, 120 automated TypeScript tests including a production-state learner journey and disposable-project execution, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, VSIX creation, and the one-download judge bundle.
+`npm run verify` covers formatting, linting, types, 121 automated TypeScript tests including a production-state learner journey and disposable-project execution, 20 synthetic traces, four Python exercise families, nine accepted strategies, four rejected defects, timing simulations, Extension Host activation, package auditing, VSIX creation, and the one-download judge bundle.
 
 The dependency audit reports no known vulnerabilities. These checks verify implementation behavior; they do not prove tutoring efficacy or human learning outcomes.
 
