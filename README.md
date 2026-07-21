@@ -23,20 +23,24 @@ The extension never inserts learner code, never treats model confidence as proof
 1. Open a source file inside a trusted VS Code workspace.
 2. Place an `@socratic-task` problem statement directly above the target function, method, or class—or select the assignment and run **Start Session from Selection**.
 3. Run **Socratic Runtime: Run Setup Doctor**.
-4. If pytest, Vitest, Jest, or Node's test runner is detected, review the preset and create `.socratic/exercise.json`.
-5. Start the session and approve the exact shell-free verifier command.
+4. If Setup Doctor detects pytest, Vitest, Jest, or Node's test runner, choose **Configure detected verifier** and select the proposed preset. Setup Doctor creates `.socratic/exercise.json` for the detected target.
+5. Start the session and separately approve the exact shell-free verifier command before it can run.
 
-Setup Doctor reports workspace trust, Codex availability, the existing ChatGPT sign-in, task binding, target detection, and verifier readiness. If no verifier is available, the session is explicitly labelled **Guidance only**: GPT-5.6 may compare revisions and ask a leakage-checked question, but the runtime cannot claim correctness or completion.
+You do not need to hand-write `.socratic/exercise.json` for a detected preset. Setup Doctor reports workspace trust, Codex availability, the existing ChatGPT sign-in, task binding, target detection, and verifier readiness. Detection never runs a command: creating the configuration and approving its exact verifier are two visible learner-controlled actions. If no supported verifier is detected, the learner can use **Guidance only** or an exercise author can provide a bounded configuration for another toolchain. Guidance-only sessions may compare revisions and ask a leakage-checked question, but cannot claim correctness or completion.
 
-## Why it is different
+## Why this is not just another coding assistant
 
-| Conventional coding assistant             | Socratic Runtime                            |
-| ----------------------------------------- | ------------------------------------------- |
-| Responds whenever invoked                 | Can explicitly choose silence               |
-| Optimizes for producing an answer         | Protects space for self-correction          |
-| May infer correctness from generated text | Requires executable verification            |
-| Often reveals implementation details      | Permits one short, leakage-checked question |
-| Treats failures as isolated events        | Compares progress across revisions          |
+Most coding assistants optimize the current request: explain, suggest, or generate. Socratic Runtime instead manages **when assistance should enter an active learning process**. After the learner starts a session, it observes bounded evidence across revisions and treats silence as a successful product action when self-correction remains productive.
+
+| Conventional coding assistant                 | Socratic Runtime                                        |
+| --------------------------------------------- | ------------------------------------------------------- |
+| Responds when prompted                        | May deliberately remain silent                          |
+| Optimizes for producing a useful answer       | Protects room for learner-generated reasoning           |
+| May let the model estimate correctness        | Gives executable verification sole completion authority |
+| Can reveal implementation details immediately | Allows at most one short, leakage-checked question      |
+| Usually reacts to the current snapshot        | Compares evidence and progress across revisions         |
+
+GPT-5.6 owns the pedagogical judgment—productive progress, experimentation, uncertainty, or credible stall—but it never gains authority over execution or completion. The deterministic host owns command approval, isolation, schema validation, uncertainty thresholds, intervention limits, privacy reduction, and solution-leakage blocking.
 
 The design separates three responsibilities:
 
@@ -101,7 +105,9 @@ The task block and verifier configuration have deliberately separate responsibil
 - `@socratic-task` describes what the learner is trying to implement.
 - `.socratic/exercise.json` names the editable target and defines the approved verifier and optional post-completion reference.
 
-Task text is treated as untrusted content. It can never configure or execute a command. A prepared `.socratic/exercise.json` remains required for verified tutoring, executable completion, and the optional reference comparison.
+For supported pytest, Vitest, Jest, and Node test-runner projects, Setup Doctor can generate `.socratic/exercise.json` after the learner selects a detected preset. Manual author configuration remains available for other approved toolchains and optional post-completion references.
+
+Task text is treated as untrusted content. It can never configure or execute a command. A validated `.socratic/exercise.json` remains required for verified tutoring, executable completion, and the optional reference comparison; Guidance-only mode remains available without one.
 
 **Copy Selection as Task Marker** turns selected problem text into a language-appropriate marker on the clipboard. The learner remains in control of the file: the extension never inserts or edits learner code.
 
